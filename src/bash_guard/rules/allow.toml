@@ -153,3 +153,11 @@ command_regex = '''^\s*gog\s+\S+\s+(get|list|list-\w+|search|status|find|export|
 [[rules]]
 name = "gog-deep-read"
 command_regex = '''^\s*gog\s+\S+\s+\S+\s+(get|list|search|status|find|space|opens|url|profile|roster)(\s|$)'''
+
+[[rules]]
+name = "fam-read"
+command_regex = '''^\s*fam\s+(show|export)(\s|$)'''
+
+[[rules]]
+name = "fam-subcommand-read"
+command_regex = '''^\s*fam\s+\S+\s+(show|status|list|test)(\s|$)'''
