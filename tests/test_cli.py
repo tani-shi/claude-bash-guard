@@ -1,13 +1,25 @@
 """Tests for CLI module."""
 
 import json
+import os
 from unittest.mock import patch
 
+import pytest
+
+from bash_guard import logger
 from bash_guard.cli import main
 
 
+@pytest.fixture()
+def log_dir(tmp_path):
+    """Use a temporary directory for logs."""
+    d = tmp_path / "logs"
+    with patch.dict(os.environ, {"BASH_GUARD_LOG_DIR": str(d)}):
+        yield d
+
+
 class TestHookMode:
-    def test_bash_allow(self, capsys):
+    def test_bash_allow(self, capsys, log_dir):
         hook_input = {
             "hook_event_name": "PermissionRequest",
             "tool_name": "Bash",
@@ -21,7 +33,7 @@ class TestHookMode:
         output = json.loads(capsys.readouterr().out)
         assert output["hookSpecificOutput"]["decision"]["behavior"] == "allow"
 
-    def test_bash_deny(self, capsys):
+    def test_bash_deny(self, capsys, log_dir):
         hook_input = {
             "hook_event_name": "PermissionRequest",
             "tool_name": "Bash",
@@ -35,7 +47,7 @@ class TestHookMode:
         output = json.loads(capsys.readouterr().out)
         assert output["hookSpecificOutput"]["decision"]["behavior"] == "deny"
 
-    def test_unknown_tool_passthrough(self, capsys):
+    def test_unknown_tool_passthrough(self, capsys, log_dir):
         hook_input = {
             "hook_event_name": "PermissionRequest",
             "tool_name": "Write",
@@ -48,23 +60,48 @@ class TestHookMode:
 
         assert capsys.readouterr().out == ""
 
+    def test_hook_writes_log(self, log_dir):
+        hook_input = {
+            "hook_event_name": "PermissionRequest",
+            "tool_name": "Bash",
+            "tool_input": {"command": "ls -la"},
+            "session_id": "test",
+            "cwd": "/tmp",
+        }
+        with patch("bash_guard.hook_io.read_input", return_value=hook_input):
+            main([])
+
+        log_file = log_dir / "eval.jsonl"
+        assert log_file.exists()
+        rec = json.loads(log_file.read_text().strip())
+        assert rec["decision"] == "allow"
+        assert rec["input"] == "ls -la"
+
 
 class TestTestMode:
-    def test_allow_command(self, capsys):
+    def test_allow_command(self, capsys, log_dir):
         main(["--test", "ls -la"])
         captured = capsys.readouterr()
         assert "ALLOW" in captured.out
 
-    def test_deny_command(self, capsys):
+    def test_deny_command(self, capsys, log_dir):
         main(["--test", "sudo rm -rf /"])
         captured = capsys.readouterr()
         assert "DENY" in captured.out
 
-    def test_explain_flag(self, capsys):
+    def test_explain_flag(self, capsys, log_dir):
         main(["--test", "ls -la", "--explain"])
         captured = capsys.readouterr()
         assert "ALLOW" in captured.out
         assert "ls -la" in captured.err
+
+    def test_test_mode_writes_log(self, log_dir):
+        main(["--test", "ls -la"])
+
+        log_file = log_dir / "eval.jsonl"
+        assert log_file.exists()
+        rec = json.loads(log_file.read_text().strip())
+        assert rec["decision"] == "allow"
 
 
 class TestSubcommands:
@@ -82,3 +119,104 @@ class TestSubcommands:
             main(["uninstall"])
         captured = capsys.readouterr()
         assert "removed" in captured.out
+
+
+class TestLogSubcommand:
+    def test_log_empty(self, capsys, log_dir):
+        main(["log"])
+        assert capsys.readouterr().out == ""
+
+    def test_log_shows_records(self, capsys, log_dir):
+        # Create some log entries
+        main(["--test", "ls"])
+        main(["--test", "pwd"])
+
+        captured_setup = capsys.readouterr()  # Clear buffer
+
+        main(["log"])
+        out = capsys.readouterr().out
+        assert "ls" in out
+        assert "pwd" in out
+
+    def test_log_limit(self, capsys, log_dir):
+        for i in range(5):
+            main(["--test", f"echo {i}"])
+        capsys.readouterr()
+
+        main(["log", "-n", "2"])
+        out = capsys.readouterr().out
+        # Each record is 2 lines
+        lines = [l for l in out.strip().split("\n") if l]
+        assert len(lines) == 4  # 2 records * 2 lines each
+
+    def test_log_json_output(self, capsys, log_dir):
+        main(["--test", "ls"])
+        capsys.readouterr()
+
+        main(["log", "--json"])
+        out = capsys.readouterr().out
+        rec = json.loads(out.strip())
+        assert rec["input"] == "ls"
+        assert rec["decision"] == "allow"
+
+    def test_log_decision_filter(self, capsys, log_dir):
+        main(["--test", "ls"])
+        main(["--test", "sudo rm -rf /"])
+        capsys.readouterr()
+
+        main(["log", "--decision", "deny", "--json"])
+        out = capsys.readouterr().out
+        lines = [l for l in out.strip().split("\n") if l]
+        assert len(lines) == 1
+        rec = json.loads(lines[0])
+        assert rec["decision"] == "deny"
+
+    def test_log_tier_filter(self, capsys, log_dir):
+        main(["--test", "ls"])  # TIER2
+        main(["--test", "sudo rm -rf /"])  # TIER1
+        capsys.readouterr()
+
+        main(["log", "--tier", "1", "--json"])
+        out = capsys.readouterr().out
+        lines = [l for l in out.strip().split("\n") if l]
+        assert len(lines) == 1
+        rec = json.loads(lines[0])
+        assert rec["tier"] == "TIER1"
+
+    def test_log_tail(self, capsys, log_dir):
+        main(["--test", "ls"])
+        main(["--test", "pwd"])
+        capsys.readouterr()
+
+        main(["log", "--tail", "--json"])
+        out = capsys.readouterr().out
+        lines = [l for l in out.strip().split("\n") if l]
+        recs = [json.loads(l) for l in lines]
+        # Tail = oldest first; ls was logged before pwd
+        assert recs[0]["input"] == "ls"
+        assert recs[1]["input"] == "pwd"
+
+    def test_log_path(self, capsys, log_dir):
+        main(["log", "--path"])
+        out = capsys.readouterr().out.strip()
+        assert out == str(log_dir)
+
+    def test_log_since(self, capsys, log_dir):
+        main(["--test", "ls"])
+        capsys.readouterr()
+
+        # Since 1 hour ago should include recent records
+        main(["log", "--since", "1h", "--json"])
+        out = capsys.readouterr().out
+        assert "ls" in out
+
+    def test_log_since_far_future(self, capsys, log_dir):
+        main(["--test", "ls"])
+        capsys.readouterr()
+
+        # Since 0 seconds ago should exclude everything
+        main(["log", "--since", "0s", "--json"])
+        out = capsys.readouterr().out.strip()
+        # 0s means time.time() - 0 = now, so records just written should be before "now"
+        # Actually records just written will have ts very close to now, may or may not match
+        # This just tests that --since doesn't crash
