@@ -1,0 +1,127 @@
+[[rules]]
+name = "ls"
+command_regex = '''^\s*ls(\s|$)'''
+
+[[rules]]
+name = "cat"
+command_regex = '''^\s*cat\s+'''
+
+[[rules]]
+name = "echo"
+command_regex = '''^\s*echo\s+'''
+
+[[rules]]
+name = "pwd"
+command_regex = '''^\s*pwd\s*$'''
+
+[[rules]]
+name = "head-tail"
+command_regex = '''^\s*(head|tail)\s+'''
+
+[[rules]]
+name = "wc"
+command_regex = '''^\s*wc(\s|$)'''
+
+[[rules]]
+name = "find"
+command_regex = '''^\s*find\s+'''
+
+[[rules]]
+name = "grep"
+command_regex = '''^\s*(grep|rg|ag)\s+'''
+
+[[rules]]
+name = "git-status"
+command_regex = '''^\s*git\s+(status|log|diff|branch|show|rev-parse|remote)(\s|$)'''
+
+[[rules]]
+name = "git-add-commit"
+command_regex = '''^\s*git\s+(add|commit|checkout|switch|stash|pull|fetch|rebase|merge|cherry-pick)(\s|$)'''
+
+[[rules]]
+name = "git-push-safe"
+command_regex = '''^\s*git\s+push(\s+--force-with-lease|\s+origin|\s+-u|\s+--set-upstream|\s*$)'''
+
+[[rules]]
+name = "which-type"
+command_regex = '''^\s*(which|type|command\s+-v)\s+'''
+
+[[rules]]
+name = "date-uname"
+command_regex = '''^\s*(date|uname|whoami|hostname|id)\s*'''
+
+[[rules]]
+name = "python-uv"
+command_regex = '''^\s*(python3?|uv)\s+'''
+
+[[rules]]
+name = "npm-node"
+command_regex = '''^\s*(node|npm|npx|yarn|pnpm|bun)\s+'''
+
+[[rules]]
+name = "cargo-rustc"
+command_regex = '''^\s*(cargo|rustc|rustup)\s+'''
+
+[[rules]]
+name = "go"
+command_regex = '''^\s*go\s+(build|run|test|mod|fmt|vet|generate)(\s|$)'''
+
+[[rules]]
+name = "make"
+command_regex = '''^\s*make(\s|$)'''
+
+[[rules]]
+name = "mkdir"
+command_regex = '''^\s*mkdir\s+'''
+
+[[rules]]
+name = "touch"
+command_regex = '''^\s*touch\s+'''
+
+[[rules]]
+name = "cp-mv"
+command_regex = '''^\s*(cp|mv)\s+'''
+
+[[rules]]
+name = "sed-awk"
+command_regex = '''^\s*(sed|awk)\s+'''
+
+[[rules]]
+name = "sort-uniq-cut"
+command_regex = '''^\s*(sort|uniq|cut|tr|tee|xargs)\s*'''
+
+[[rules]]
+name = "diff"
+command_regex = '''^\s*diff\s+'''
+
+[[rules]]
+name = "curl-wget-simple"
+command_regex = '''^\s*(curl|wget)\s+(?!.*\|\s*(bash|sh|zsh))'''
+
+[[rules]]
+name = "docker"
+command_regex = '''^\s*docker\s+'''
+
+[[rules]]
+name = "test-bracket"
+command_regex = '''^\s*(\[|test)\s+'''
+
+[[rules]]
+name = "cd"
+command_regex = '''^\s*cd(\s|$)'''
+
+[[rules]]
+name = "rm-safe"
+command_regex = '''^\s*(rm|trash)\s+'''
+
+[[rules]]
+name = "chmod-chown"
+command_regex = '''^\s*(chmod|chown)\s+'''
+
+[[rules]]
+name = "tar-zip"
+command_regex = '''^\s*(tar|zip|unzip|gzip|gunzip)\s+'''
+
+[[rules]]
+name = "env-printenv"
+command_regex = '''^\s*(env|printenv|export)\s*'''

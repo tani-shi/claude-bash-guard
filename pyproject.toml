@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "claude-bash-guard"
+version = "0.1.0"
+description = "Claude Code hook for evaluating Bash command safety"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+bash-guard = "bash_guard.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bash_guard"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]

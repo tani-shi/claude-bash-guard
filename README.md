@@ -1,0 +1,141 @@
+# bash-guard
+
+A [Claude Code hook](https://docs.anthropic.com/en/docs/claude-code/hooks) that evaluates Bash commands for safety before execution. It acts as a `PreToolUse` / `PermissionRequest` hook, applying a 3-tier evaluation system to automatically allow safe commands, block dangerous ones, and defer ambiguous cases to an LLM judge.
+
+## Installation
+
+```bash
+uv tool install .
+```
+
+Then register the hooks with Claude Code:
+
+```bash
+bash-guard install
+```
+
+This adds `bash-guard` as a hook for both `PreToolUse` and `PermissionRequest` events in `~/.claude/settings.json`. A backup (`settings.json.bak`) is created automatically.
+
+To remove:
+
+```bash
+bash-guard uninstall
+```
+
+## How it works
+
+Every Bash command and Read file path is evaluated through a 3-tier pipeline:
+
+```
+stdin JSON → TIER 1: Deny rules → TIER 2: Allow rules → TIER 3: LLM judge → stdout JSON
+```
+
+| Tier | Method | Speed | Description |
+|------|--------|-------|-------------|
+| TIER 1 | Regex deny list | Instant | Blocks known-dangerous commands (e.g. `sudo`, `rm -rf /`, `curl \| bash`) |
+| TIER 2 | Regex allow list | Instant | Permits known-safe commands (e.g. `ls`, `git status`, `make`) |
+| TIER 3 | LLM judge | ~2-5s | Calls `claude -p` with haiku to evaluate ambiguous commands |
+
+For the `Read` tool, only TIER 1 deny rules are checked (e.g. `.env` files are blocked). If no deny rule matches, the read is allowed.
+
+Unknown tools (not `Bash` or `Read`) are passed through without evaluation.
+
+## Deny rules (TIER 1)
+
+| Rule | Pattern |
+|------|---------|
+| `rm-rf-root` | `rm -rf /`, `rm -rf ~`, `rm -rf $HOME` |
+| `sudo` | Any command starting with `sudo` |
+| `fork-bomb` | `:(){ :\|:& };:` pattern |
+| `mkfs` | `mkfs` / `mkfs.ext4` etc. |
+| `dd-zero` | `dd if=/dev/zero` or `/dev/urandom` |
+| `pipe-to-shell` | `curl \| bash`, `wget \| sh` |
+| `force-push-main` | `git push --force` to `main`/`master` (allows `--force-with-lease`) |
+| `env-write` | Writing to `.env` files via `>`, `>>`, `tee` |
+| `env-files` | Reading `.env` / `.env.*` files (Read tool) |
+
+## Allow rules (TIER 2)
+
+Common development commands are auto-approved, including:
+
+- File operations: `ls`, `cat`, `head`, `tail`, `find`, `grep`, `cp`, `mv`, `mkdir`, `touch`, `rm`, `trash`
+- Git: `status`, `log`, `diff`, `add`, `commit`, `push` (with `--force-with-lease`), etc.
+- Build tools: `make`, `cargo`, `go build`, `npm`, `node`, `python`, `uv`
+- Utilities: `echo`, `pwd`, `which`, `date`, `sort`, `sed`, `awk`, `curl`, `docker`, `tar`, `zip`
+
+See [`src/bash_guard/rules/allow.toml`](src/bash_guard/rules/allow.toml) for the full list.
+
+## CLI usage
+
+### Hook mode (default)
+
+Reads JSON from stdin and writes the hook response to stdout. This is how Claude Code invokes it:
+
+```bash
+echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls"},"session_id":"s","cwd":"/tmp"}' | bash-guard
+```
+
+### Test mode
+
+Evaluate a command without the full hook protocol:
+
+```bash
+bash-guard --test "ls -la"
+# ALLOW [TIER2]: Allowed by rule: ls
+
+bash-guard --test "sudo rm -rf /"
+# DENY [TIER1]: Blocked by deny rule: rm-rf-root
+```
+
+### Debug output
+
+Add `--explain` to print the decision reason to stderr:
+
+```bash
+bash-guard --test "ls -la" --explain
+```
+
+### Hook management
+
+```bash
+bash-guard install    # Add hooks to ~/.claude/settings.json
+bash-guard uninstall  # Remove hooks from ~/.claude/settings.json
+```
+
+## LLM judge (TIER 3)
+
+When a command matches neither deny nor allow rules, `bash-guard` invokes:
+
+```
+claude -p "<prompt>" --model claude-haiku-4-5-20251001
+```
+
+The LLM evaluates the command and responds with `ALLOW`, `DENY`, or `ASK`. On timeout (15s) or error, the decision falls back to `ASK`, which prompts the user for manual approval.
+
+## Project structure
+
+```
+src/bash_guard/
+├── cli.py           # Entry point, argparse
+├── evaluator.py     # 3-tier evaluation engine
+├── hook_io.py       # stdin/stdout JSON handling
+├── rule_engine.py   # TOML rule loading and regex matching
+├── llm_judge.py     # TIER 3: claude subprocess
+├── installer.py     # Hook install/uninstall
+└── rules/
+    ├── deny.toml      # TIER 1 deny patterns
+    ├── allow.toml     # TIER 2 allow patterns
+    └── llm_prompt.txt # TIER 3 prompt template
+```
+
+## Development
+
+```bash
+# Run tests
+uv run pytest tests/ -v
+
+# Test a command locally
+uv run bash-guard --test "your-command-here"
+```
+
+Requires Python 3.11+ (uses `tomllib` from the standard library). Zero external runtime dependencies.

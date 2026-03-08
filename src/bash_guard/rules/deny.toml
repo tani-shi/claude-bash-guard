@@ -1,0 +1,35 @@
+[[rules]]
+name = "rm-rf-root"
+command_regex = '''rm\s+(-[a-zA-Z]*r[a-zA-Z]*\s+|--recursive\s+)(/\s*$|/\s+|~\s*$|~\s+|\$HOME\s*$|\$HOME\s+)'''
+
+[[rules]]
+name = "sudo"
+command_regex = '''^\s*sudo\s+'''
+
+[[rules]]
+name = "fork-bomb"
+command_regex = ''':\(\)\s*\{'''
+
+[[rules]]
+name = "mkfs"
+command_regex = '''mkfs(\.\w+)?\s+'''
+
+[[rules]]
+name = "dd-zero"
+command_regex = '''dd\s+.*if=/dev/(zero|urandom)'''
+
+[[rules]]
+name = "pipe-to-shell"
+command_regex = '''(curl|wget)\s+.*\|\s*(bash|sh|zsh|dash)'''
+
+[[rules]]
+name = "force-push-main"
+command_regex = '''git\s+push\s+.*--force(?!-with-lease).*\b(main|master)\b'''
+
+[[rules]]
+name = "env-write"
+command_regex = '''(>|>>|tee\s+).*\.env(\s|$|\..*$)'''
+
+[[read_rules]]
+name = "env-files"
+path_regex = '''(^|/)\.env(\..+)?$'''
