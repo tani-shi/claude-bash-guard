@@ -56,7 +56,7 @@ command_regex = '''^\s*(python3?|uv)\s+'''
 
 [[rules]]
 name = "npm-node"
-command_regex = '''^\s*(node|npm|npx|yarn|pnpm|bun)\s+'''
+command_regex = '''^\s*(node|npm|npx|yarn|pnpm|pnpx|bun)\s+'''
 
 [[rules]]
 name = "cargo-rustc"
@@ -125,3 +125,31 @@ command_regex = '''^\s*(tar|zip|unzip|gzip|gunzip)\s+'''
 [[rules]]
 name = "env-printenv"
 command_regex = '''^\s*(env|printenv|export)\s*'''
+
+[[rules]]
+name = "linters"
+command_regex = '''^\s*(tsc|eslint|prettier|biome|shellcheck|mypy|pyright|ruff|shfmt)(\s|$)'''
+
+[[rules]]
+name = "help-flag"
+command_regex = '''\s--help(\s|$)'''
+
+[[rules]]
+name = "gh-read"
+command_regex = '''^\s*gh\s+(status|api|search)(\s|$)'''
+
+[[rules]]
+name = "gh-subcommand-read"
+command_regex = '''^\s*gh\s+\S+\s+(list|view|get|status|diff|check|watch|search|verify|logs|ports|token|trusted-root|gitignore|license|field-list|item-list)(\s|$)'''
+
+[[rules]]
+name = "gog-read"
+command_regex = '''^\s*gog\s+(version|people|groups)(\s|$)'''
+
+[[rules]]
+name = "gog-subcommand-read"
+command_regex = '''^\s*gog\s+\S+\s+(get|list|list-\w+|search|status|find|export|info|cat|ls|url|download|metadata|notes|content|responses|attachment|history|permissions|keys|path|drives|directory|other|acl|calendars|colors|conflicts|events?|freebusy|team|time|users|services|roster|profile)(\s|$)'''
+
+[[rules]]
+name = "gog-deep-read"
+command_regex = '''^\s*gog\s+\S+\s+\S+\s+(get|list|search|status|find|space|opens|url|profile|roster)(\s|$)'''

@@ -104,6 +104,52 @@ class TestAllowRules:
         assert match_allow("rm file.txt") is not None
         assert match_allow("trash file.txt") is not None
 
+    def test_linters(self):
+        assert match_allow("tsc --noEmit") is not None
+        assert match_allow("eslint .") is not None
+        assert match_allow("prettier --check src/") is not None
+        assert match_allow("ruff check") is not None
+        assert match_allow("mypy src/") is not None
+        assert match_allow("biome check") is not None
+        assert match_allow("shellcheck script.sh") is not None
+        assert match_allow("pyright") is not None
+        assert match_allow("shfmt -w .") is not None
+
+    def test_pnpx(self):
+        assert match_allow("pnpx prettier --check .") is not None
+
+    def test_help_flag(self):
+        assert match_allow("git --help") is not None
+        assert match_allow("docker run --help") is not None
+
+    def test_gh_read(self):
+        assert match_allow("gh status") is not None
+        assert match_allow("gh api repos/owner/repo") is not None
+        assert match_allow("gh search code query") is not None
+
+    def test_gh_subcommand_read(self):
+        assert match_allow("gh pr list") is not None
+        assert match_allow("gh run view 12345") is not None
+        assert match_allow("gh repo view") is not None
+        assert match_allow("gh pr diff") is not None
+        assert match_allow("gh attestation verify") is not None
+
+    def test_gog_read(self):
+        assert match_allow("gog version") is not None
+        assert match_allow("gog people") is not None
+        assert match_allow("gog groups") is not None
+
+    def test_gog_subcommand_read(self):
+        assert match_allow('gog gmail search "query"') is not None
+        assert match_allow("gog calendar events") is not None
+        assert match_allow("gog drive ls") is not None
+        assert match_allow("gog docs export") is not None
+
+    def test_gog_deep_read(self):
+        assert match_allow("gog auth alias list") is not None
+        assert match_allow("gog chat spaces find") is not None
+        assert match_allow("gog gmail drafts get") is not None
+
 
 class TestReadDenyRules:
     def test_env_files(self):
