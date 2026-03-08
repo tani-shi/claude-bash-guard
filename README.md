@@ -1,6 +1,6 @@
 # bash-guard
 
-A [Claude Code hook](https://docs.anthropic.com/en/docs/claude-code/hooks) that evaluates Bash commands for safety before execution. It acts as a `PreToolUse` / `PermissionRequest` hook, applying a 3-tier evaluation system to automatically allow safe commands, block dangerous ones, and defer ambiguous cases to an LLM judge.
+A [Claude Code hook](https://docs.anthropic.com/en/docs/claude-code/hooks) that evaluates Bash commands for safety before execution. It acts as a `PermissionRequest` hook, applying a 3-tier evaluation system to automatically allow safe commands, block dangerous ones, and defer ambiguous cases to an LLM judge.
 
 ## Installation
 
@@ -14,7 +14,7 @@ Then register the hooks with Claude Code:
 bash-guard install
 ```
 
-This adds `bash-guard` as a hook for both `PreToolUse` and `PermissionRequest` events in `~/.claude/settings.json`. A backup (`settings.json.bak`) is created automatically.
+This adds `bash-guard` as a `PermissionRequest` hook in `~/.claude/settings.json`. A backup (`settings.json.bak`) is created automatically.
 
 To remove:
 
@@ -72,7 +72,7 @@ See [`src/bash_guard/rules/allow.toml`](src/bash_guard/rules/allow.toml) for the
 Reads JSON from stdin and writes the hook response to stdout. This is how Claude Code invokes it:
 
 ```bash
-echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls"},"session_id":"s","cwd":"/tmp"}' | bash-guard
+echo '{"hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"ls"},"session_id":"s","cwd":"/tmp"}' | bash-guard
 ```
 
 ### Test mode

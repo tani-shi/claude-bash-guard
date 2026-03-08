@@ -55,7 +55,7 @@ def _run_test(command: str, *, explain: bool = False) -> None:
     import os
 
     hook_input = {
-        "hook_event_name": "PreToolUse",
+        "hook_event_name": "PermissionRequest",
         "tool_name": "Bash",
         "tool_input": {"command": command},
         "session_id": "test",
@@ -82,7 +82,6 @@ def _run_hook(*, explain: bool = False) -> None:
         print(f"Error reading input: {e}", file=sys.stderr)
         sys.exit(1)
 
-    hook_event_name = hook_input.get("hook_event_name", "")
     result = evaluator.evaluate(hook_input)
 
     if result is None:
@@ -95,7 +94,7 @@ def _run_hook(*, explain: bool = False) -> None:
         tool_name = hook_input.get("tool_name", "")
         print(f"[bash-guard] {tool_name}: {decision} [{tier}] {reason}", file=sys.stderr)
 
-    hook_io.write_output(decision, reason, hook_event_name)
+    hook_io.write_output(decision, reason)
 
 
 if __name__ == "__main__":

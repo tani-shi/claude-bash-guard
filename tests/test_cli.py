@@ -1,10 +1,7 @@
 """Tests for CLI module."""
 
-import io
 import json
 from unittest.mock import patch
-
-import pytest
 
 from bash_guard.cli import main
 
@@ -12,7 +9,7 @@ from bash_guard.cli import main
 class TestHookMode:
     def test_bash_allow(self, capsys):
         hook_input = {
-            "hook_event_name": "PreToolUse",
+            "hook_event_name": "PermissionRequest",
             "tool_name": "Bash",
             "tool_input": {"command": "ls -la"},
             "session_id": "test",
@@ -22,11 +19,11 @@ class TestHookMode:
             main([])
 
         output = json.loads(capsys.readouterr().out)
-        assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
+        assert output["hookSpecificOutput"]["decision"]["behavior"] == "allow"
 
     def test_bash_deny(self, capsys):
         hook_input = {
-            "hook_event_name": "PreToolUse",
+            "hook_event_name": "PermissionRequest",
             "tool_name": "Bash",
             "tool_input": {"command": "sudo rm -rf /"},
             "session_id": "test",
@@ -36,11 +33,11 @@ class TestHookMode:
             main([])
 
         output = json.loads(capsys.readouterr().out)
-        assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
+        assert output["hookSpecificOutput"]["decision"]["behavior"] == "deny"
 
     def test_unknown_tool_passthrough(self, capsys):
         hook_input = {
-            "hook_event_name": "PreToolUse",
+            "hook_event_name": "PermissionRequest",
             "tool_name": "Write",
             "tool_input": {"file_path": "/test.txt"},
             "session_id": "test",
@@ -50,20 +47,6 @@ class TestHookMode:
             main([])
 
         assert capsys.readouterr().out == ""
-
-    def test_permission_request_deny(self, capsys):
-        hook_input = {
-            "hook_event_name": "PermissionRequest",
-            "tool_name": "Bash",
-            "tool_input": {"command": "sudo reboot"},
-            "session_id": "test",
-            "cwd": "/tmp",
-        }
-        with patch("bash_guard.hook_io.read_input", return_value=hook_input):
-            main([])
-
-        output = json.loads(capsys.readouterr().out)
-        assert output["hookSpecificOutput"]["decision"]["behavior"] == "deny"
 
 
 class TestTestMode:

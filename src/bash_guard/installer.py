@@ -38,20 +38,17 @@ def install(settings_path: Path | None = None) -> str:
     # Merge hooks
     hooks = settings.setdefault("hooks", {})
 
-    for event_name in ("PreToolUse", "PermissionRequest"):
-        existing = hooks.get(event_name, [])
+    existing = hooks.get("PermissionRequest", [])
 
-        # Check if already installed
-        already_installed = any(
-            hook.get("command") == "bash-guard"
-            for entry in existing
-            for hook in entry.get("hooks", [])
-        )
-        if already_installed:
-            continue
-
+    # Check if already installed
+    already_installed = any(
+        hook.get("command") == "bash-guard"
+        for entry in existing
+        for hook in entry.get("hooks", [])
+    )
+    if not already_installed:
         existing.extend(HOOK_ENTRIES)
-        hooks[event_name] = existing
+        hooks["PermissionRequest"] = existing
 
     _save_settings(path, settings)
     return f"bash-guard hooks installed to {path}"
@@ -68,21 +65,20 @@ def uninstall(settings_path: Path | None = None) -> str:
     hooks = settings.get("hooks", {})
     modified = False
 
-    for event_name in ("PreToolUse", "PermissionRequest"):
-        existing = hooks.get(event_name, [])
-        filtered = [
-            entry
-            for entry in existing
-            if not any(
-                hook.get("command") == "bash-guard" for hook in entry.get("hooks", [])
-            )
-        ]
-        if len(filtered) != len(existing):
-            modified = True
-            if filtered:
-                hooks[event_name] = filtered
-            else:
-                del hooks[event_name]
+    existing = hooks.get("PermissionRequest", [])
+    filtered = [
+        entry
+        for entry in existing
+        if not any(
+            hook.get("command") == "bash-guard" for hook in entry.get("hooks", [])
+        )
+    ]
+    if len(filtered) != len(existing):
+        modified = True
+        if filtered:
+            hooks["PermissionRequest"] = filtered
+        else:
+            del hooks["PermissionRequest"]
 
     if modified:
         _save_settings(path, settings)

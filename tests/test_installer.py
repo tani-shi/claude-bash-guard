@@ -18,13 +18,12 @@ class TestInstall:
         assert "installed" in msg
 
         settings = json.loads(settings_file.read_text())
-        assert "PreToolUse" in settings["hooks"]
         assert "PermissionRequest" in settings["hooks"]
+        assert "PreToolUse" not in settings["hooks"]
 
-        for event_name in ("PreToolUse", "PermissionRequest"):
-            entries = settings["hooks"][event_name]
-            assert len(entries) == 1
-            assert entries[0]["hooks"][0]["command"] == "bash-guard"
+        entries = settings["hooks"]["PermissionRequest"]
+        assert len(entries) == 1
+        assert entries[0]["hooks"][0]["command"] == "bash-guard"
 
     def test_install_existing_settings(self, settings_file):
         settings_file.write_text(json.dumps({"someKey": "value"}))
@@ -39,8 +38,7 @@ class TestInstall:
         install(settings_file)
 
         settings = json.loads(settings_file.read_text())
-        # Should not duplicate entries
-        assert len(settings["hooks"]["PreToolUse"]) == 1
+        assert len(settings["hooks"]["PermissionRequest"]) == 1
 
     def test_install_creates_backup(self, settings_file):
         settings_file.write_text(json.dumps({"existing": True}))
@@ -59,7 +57,6 @@ class TestUninstall:
         assert "removed" in msg
 
         settings = json.loads(settings_file.read_text())
-        assert "PreToolUse" not in settings.get("hooks", {})
         assert "PermissionRequest" not in settings.get("hooks", {})
 
     def test_uninstall_not_installed(self, settings_file):
@@ -70,7 +67,7 @@ class TestUninstall:
     def test_uninstall_preserves_other_hooks(self, settings_file):
         settings = {
             "hooks": {
-                "PreToolUse": [
+                "PermissionRequest": [
                     {"matcher": "*", "hooks": [{"type": "command", "command": "other-hook"}]},
                     {"matcher": "*", "hooks": [{"type": "command", "command": "bash-guard"}]},
                 ]
@@ -80,6 +77,6 @@ class TestUninstall:
         uninstall(settings_file)
 
         result = json.loads(settings_file.read_text())
-        entries = result["hooks"]["PreToolUse"]
+        entries = result["hooks"]["PermissionRequest"]
         assert len(entries) == 1
         assert entries[0]["hooks"][0]["command"] == "other-hook"

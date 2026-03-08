@@ -1,4 +1,4 @@
-"""Hook protocol I/O for Claude Code PreToolUse and PermissionRequest hooks."""
+"""Hook protocol I/O for Claude Code PermissionRequest hooks."""
 
 from __future__ import annotations
 
@@ -18,44 +18,27 @@ def read_input(stdin: TextIO | None = None) -> dict[str, Any]:
 def write_output(
     decision: str,
     reason: str,
-    hook_event_name: str,
     stdout: TextIO | None = None,
 ) -> None:
-    """Write the appropriate JSON response to stdout.
+    """Write the PermissionRequest JSON response to stdout.
 
-    For PreToolUse:
-      {"hookSpecificOutput": {"hookEventName": "PreToolUse",
-       "permissionDecision": "...", "permissionDecisionReason": "..."}}
-
-    For PermissionRequest:
-      - "allow" or "deny": {"hookSpecificOutput": {"hookEventName": "PermissionRequest",
-        "decision": {"behavior": "...", "message": "..."}}}
-      - "ask": no output (passthrough)
+    - "allow" or "deny": {"hookSpecificOutput": {"hookEventName": "PermissionRequest",
+      "decision": {"behavior": "...", "message": "..."}}}
+    - "ask": no output (passthrough, exit 0)
     """
     if stdout is None:
         stdout = sys.stdout
-    if hook_event_name == "PreToolUse":
-        output = {
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": decision,
-                "permissionDecisionReason": reason,
-            }
+    if decision == "ask":
+        # Passthrough: no output, exit 0
+        return
+    output = {
+        "hookSpecificOutput": {
+            "hookEventName": "PermissionRequest",
+            "decision": {
+                "behavior": decision,
+                "message": reason,
+            },
         }
-        json.dump(output, stdout)
-        stdout.write("\n")
-    elif hook_event_name == "PermissionRequest":
-        if decision == "ask":
-            # Passthrough: no output, exit 0
-            return
-        output = {
-            "hookSpecificOutput": {
-                "hookEventName": "PermissionRequest",
-                "decision": {
-                    "behavior": decision,
-                    "message": reason,
-                },
-            }
-        }
-        json.dump(output, stdout)
-        stdout.write("\n")
+    }
+    json.dump(output, stdout)
+    stdout.write("\n")
