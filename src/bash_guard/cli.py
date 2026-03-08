@@ -53,7 +53,7 @@ def main(argv: list[str] | None = None) -> None:
         "--tail", action="store_true", help="Show oldest first (chronological order)"
     )
     log_parser.add_argument(
-        "--follow", action="store_true", help="Follow log in real-time (tail -f)"
+        "-f", "--follow", action="store_true", help="Follow log in real-time (tail -f)"
     )
     log_parser.add_argument(
         "--path", action="store_true", help="Print log directory path and exit"
