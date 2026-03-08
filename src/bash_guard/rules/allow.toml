@@ -91,6 +91,10 @@ name = "sort-uniq-cut"
 command_regex = '''^\s*(sort|uniq|cut|tr|tee|xargs)\s*'''
 
 [[rules]]
+name = "jq"
+command_regex = '''^\s*jq(\s|$)'''
+
+[[rules]]
 name = "diff"
 command_regex = '''^\s*diff\s+'''
 

@@ -145,6 +145,12 @@ class TestAllowRules:
         assert match_allow("gog drive ls") is not None
         assert match_allow("gog docs export") is not None
 
+    def test_jq(self):
+        assert match_allow("jq .") is not None
+        assert match_allow("jq '.foo'") is not None
+        assert match_allow("jq -r '.name' file.json") is not None
+        assert match_allow("jq") is not None
+
     def test_gog_deep_read(self):
         assert match_allow("gog auth alias list") is not None
         assert match_allow("gog chat spaces find") is not None
