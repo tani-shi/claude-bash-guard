@@ -171,17 +171,17 @@ class TestLogSubcommand:
         rec = json.loads(lines[0])
         assert rec["decision"] == "deny"
 
-    def test_log_tier_filter(self, capsys, log_dir):
-        main(["--test", "ls"])  # TIER2
-        main(["--test", "sudo rm -rf /"])  # TIER1
+    def test_log_stage_filter(self, capsys, log_dir):
+        main(["--test", "ls"])  # RULE_ALLOW
+        main(["--test", "sudo rm -rf /"])  # RULE_DENY
         capsys.readouterr()
 
-        main(["log", "--tier", "1", "--json"])
+        main(["log", "--stage", "RULE_DENY", "--json"])
         out = capsys.readouterr().out
         lines = [l for l in out.strip().split("\n") if l]
         assert len(lines) == 1
         rec = json.loads(lines[0])
-        assert rec["tier"] == "TIER1"
+        assert rec["stage"] == "RULE_DENY"
 
     def test_log_tail(self, capsys, log_dir):
         main(["--test", "ls"])

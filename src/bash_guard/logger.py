@@ -27,7 +27,7 @@ def log_evaluation(
     hook_input: dict[str, Any],
     decision: str,
     reason: str,
-    tier: str,
+    stage: str,
     elapsed_ms: float,
 ) -> None:
     """Append one evaluation record to the log file.
@@ -55,7 +55,7 @@ def log_evaluation(
             "input": input_value,
             "cwd": hook_input.get("cwd", ""),
             "decision": decision,
-            "tier": tier,
+            "stage": stage,
             "reason": reason,
             "elapsed_ms": round(elapsed_ms, 1),
         }
@@ -93,7 +93,7 @@ def iter_logs(
     *,
     since: float | None = None,
     decision: str | None = None,
-    tier: str | None = None,
+    stage: str | None = None,
     limit: int = 0,
     newest_first: bool = True,
 ) -> Iterator[dict[str, Any]]:
@@ -103,7 +103,7 @@ def iter_logs(
         log_dir: Directory containing log files. Defaults to get_log_dir().
         since: Unix timestamp; only yield records newer than this.
         decision: Filter by decision (e.g. "allow", "deny").
-        tier: Filter by tier (e.g. "TIER1", "TIER2", "TIER3").
+        stage: Filter by stage (e.g. "RULE_DENY", "RULE_ALLOW", "LLM_JUDGE").
         limit: Maximum number of records to yield. 0 means unlimited.
         newest_first: If True, yield newest records first.
     """
@@ -136,7 +136,7 @@ def iter_logs(
                         rec = json.loads(line)
                     except json.JSONDecodeError:
                         continue
-                    if not _matches(rec, since=since, decision=decision, tier=tier):
+                    if not _matches(rec, since=since, decision=decision, stage=stage):
                         continue
                     records.append(rec)
         except OSError:
@@ -158,11 +158,11 @@ def _matches(
     *,
     since: float | None,
     decision: str | None,
-    tier: str | None,
+    stage: str | None,
 ) -> bool:
     if decision and rec.get("decision") != decision:
         return False
-    if tier and rec.get("tier") != tier:
+    if stage and rec.get("stage") != stage:
         return False
     if since is not None:
         ts_str = rec.get("ts", "")

@@ -33,7 +33,7 @@ def _make_hook_input(command="ls -la", tool_name="Bash", session_id="sess1", cwd
 class TestLogEvaluation:
     def test_creates_file_and_writes_record(self, log_dir):
         hook_input = _make_hook_input("git status")
-        logger.log_evaluation(hook_input, "allow", "Allowed by rule: git_read_only", "TIER2", 2.1)
+        logger.log_evaluation(hook_input, "allow", "Allowed by rule: git_read_only", "RULE_ALLOW", 2.1)
 
         log_file = log_dir / "eval.jsonl"
         assert log_file.exists()
@@ -42,7 +42,7 @@ class TestLogEvaluation:
         assert rec["tool_name"] == "Bash"
         assert rec["input"] == "git status"
         assert rec["decision"] == "allow"
-        assert rec["tier"] == "TIER2"
+        assert rec["stage"] == "RULE_ALLOW"
         assert rec["reason"] == "Allowed by rule: git_read_only"
         assert rec["elapsed_ms"] == 2.1
         assert rec["session_id"] == "sess1"
@@ -51,7 +51,7 @@ class TestLogEvaluation:
 
     def test_read_tool_logs_file_path(self, log_dir):
         hook_input = _make_hook_input("/home/.env", tool_name="Read")
-        logger.log_evaluation(hook_input, "deny", "Blocked by read rule: env_files", "TIER1", 0.5)
+        logger.log_evaluation(hook_input, "deny", "Blocked by read rule: env_files", "RULE_DENY", 0.5)
 
         log_file = log_dir / "eval.jsonl"
         rec = json.loads(log_file.read_text().strip())
@@ -60,7 +60,7 @@ class TestLogEvaluation:
 
     def test_multiple_records_appended(self, log_dir):
         for i in range(5):
-            logger.log_evaluation(_make_hook_input(f"cmd{i}"), "allow", "ok", "TIER2", 1.0)
+            logger.log_evaluation(_make_hook_input(f"cmd{i}"), "allow", "ok", "RULE_ALLOW", 1.0)
 
         log_file = log_dir / "eval.jsonl"
         lines = log_file.read_text().strip().split("\n")
@@ -70,7 +70,7 @@ class TestLogEvaluation:
         """Logging failure should not raise."""
         with patch("builtins.open", side_effect=PermissionError("denied")):
             # Should not raise
-            logger.log_evaluation(_make_hook_input(), "allow", "ok", "TIER2", 1.0)
+            logger.log_evaluation(_make_hook_input(), "allow", "ok", "RULE_ALLOW", 1.0)
 
 
 class TestRotation:
@@ -81,7 +81,7 @@ class TestRotation:
         # Create a file just over MAX_FILE_SIZE
         with patch.object(logger, "MAX_FILE_SIZE", 100):
             log_file.write_text("x" * 101 + "\n")
-            logger.log_evaluation(_make_hook_input(), "allow", "ok", "TIER2", 1.0)
+            logger.log_evaluation(_make_hook_input(), "allow", "ok", "RULE_ALLOW", 1.0)
 
         assert log_file.exists()  # New current file
         assert (log_dir / "eval.jsonl.1").exists()  # Rotated
@@ -96,7 +96,7 @@ class TestRotation:
         log_file = log_dir / "eval.jsonl"
         with patch.object(logger, "MAX_FILE_SIZE", 100):
             log_file.write_text("x" * 101 + "\n")
-            logger.log_evaluation(_make_hook_input(), "allow", "ok", "TIER2", 1.0)
+            logger.log_evaluation(_make_hook_input(), "allow", "ok", "RULE_ALLOW", 1.0)
 
         assert (log_dir / "eval.jsonl.1").read_text().startswith("x" * 101)
         assert (log_dir / "eval.jsonl.2").read_text() == "old1\n"
@@ -112,7 +112,7 @@ class TestRotation:
 
             log_file = log_dir / "eval.jsonl"
             log_file.write_text("x" * 101 + "\n")
-            logger.log_evaluation(_make_hook_input(), "allow", "ok", "TIER2", 1.0)
+            logger.log_evaluation(_make_hook_input(), "allow", "ok", "RULE_ALLOW", 1.0)
 
         # .3 should exist (was .2), but old .3 should have been replaced
         assert (log_dir / "eval.jsonl.3").exists()
@@ -132,26 +132,26 @@ class TestIterLogs:
     def test_basic_iteration(self, log_dir):
         for i in range(3):
             logger.log_evaluation(
-                _make_hook_input(f"cmd{i}"), "allow", "ok", "TIER2", 1.0
+                _make_hook_input(f"cmd{i}"), "allow", "ok", "RULE_ALLOW", 1.0
             )
 
         results = list(logger.iter_logs(log_dir))
         assert len(results) == 3
 
     def test_filter_by_decision(self, log_dir):
-        logger.log_evaluation(_make_hook_input("ls"), "allow", "ok", "TIER2", 1.0)
-        logger.log_evaluation(_make_hook_input("sudo rm"), "deny", "blocked", "TIER1", 0.5)
-        logger.log_evaluation(_make_hook_input("cat"), "allow", "ok", "TIER2", 1.0)
+        logger.log_evaluation(_make_hook_input("ls"), "allow", "ok", "RULE_ALLOW", 1.0)
+        logger.log_evaluation(_make_hook_input("sudo rm"), "deny", "blocked", "RULE_DENY", 0.5)
+        logger.log_evaluation(_make_hook_input("cat"), "allow", "ok", "RULE_ALLOW", 1.0)
 
         results = list(logger.iter_logs(log_dir, decision="deny"))
         assert len(results) == 1
         assert results[0]["input"] == "sudo rm"
 
-    def test_filter_by_tier(self, log_dir):
-        logger.log_evaluation(_make_hook_input("sudo"), "deny", "blocked", "TIER1", 0.5)
-        logger.log_evaluation(_make_hook_input("ls"), "allow", "ok", "TIER2", 1.0)
+    def test_filter_by_stage(self, log_dir):
+        logger.log_evaluation(_make_hook_input("sudo"), "deny", "blocked", "RULE_DENY", 0.5)
+        logger.log_evaluation(_make_hook_input("ls"), "allow", "ok", "RULE_ALLOW", 1.0)
 
-        results = list(logger.iter_logs(log_dir, tier="TIER1"))
+        results = list(logger.iter_logs(log_dir, stage="RULE_DENY"))
         assert len(results) == 1
         assert results[0]["input"] == "sudo"
 
@@ -168,7 +168,7 @@ class TestIterLogs:
 
     def test_limit(self, log_dir):
         for i in range(10):
-            logger.log_evaluation(_make_hook_input(f"cmd{i}"), "allow", "ok", "TIER2", 1.0)
+            logger.log_evaluation(_make_hook_input(f"cmd{i}"), "allow", "ok", "RULE_ALLOW", 1.0)
 
         results = list(logger.iter_logs(log_dir, limit=3))
         assert len(results) == 3

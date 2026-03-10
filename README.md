@@ -1,6 +1,6 @@
 # bash-guard
 
-A [Claude Code hook](https://docs.anthropic.com/en/docs/claude-code/hooks) that evaluates Bash commands for safety before execution. It acts as a `PermissionRequest` hook, applying a 3-tier evaluation system to automatically allow safe commands, block dangerous ones, and defer ambiguous cases to an LLM judge.
+A [Claude Code hook](https://docs.anthropic.com/en/docs/claude-code/hooks) that evaluates Bash commands for safety before execution. It acts as a `PermissionRequest` hook, applying a multi-stage evaluation system to automatically allow safe commands, block dangerous ones, and defer ambiguous cases to an LLM judge.
 
 ## Installation
 
@@ -24,23 +24,24 @@ bash-guard uninstall
 
 ## How it works
 
-Every Bash command and Read file path is evaluated through a 3-tier pipeline:
+Every Bash command and Read file path is evaluated through a multi-stage pipeline:
 
 ```
-stdin JSON → TIER 1: Deny rules → TIER 2: Allow rules → TIER 3: LLM judge → stdout JSON
+stdin JSON → RULE_DENY → RULE_ALLOW → RULE_ASK → LLM_JUDGE → stdout JSON
 ```
 
-| Tier | Method | Speed | Description |
-|------|--------|-------|-------------|
-| TIER 1 | Regex deny list | Instant | Blocks known-dangerous commands (e.g. `sudo`, `rm -rf /`, `curl \| bash`) |
-| TIER 2 | Regex allow list | Instant | Permits known-safe commands (e.g. `ls`, `git status`, `make`) |
-| TIER 3 | LLM judge | ~2-5s | Calls `claude -p` with haiku to evaluate ambiguous commands |
+| Stage | Method | Speed | Description |
+|-------|--------|-------|-------------|
+| RULE_DENY | Regex deny list | Instant | Blocks known-dangerous commands (e.g. `sudo`, `rm -rf /`, `curl \| bash`) |
+| RULE_ALLOW | Regex allow list | Instant | Permits known-safe commands (e.g. `ls`, `git status`, `make`) |
+| RULE_ASK | Regex ask list | Instant | Prompts user confirmation for commands that need review (e.g. `ssh`, `systemctl`) |
+| LLM_JUDGE | LLM judge | ~2-5s | Calls `claude -p` with haiku to evaluate ambiguous commands |
 
-For the `Read` tool, only TIER 1 deny rules are checked (e.g. `.env` files are blocked). If no deny rule matches, the read is allowed.
+For the `Read` tool, only RULE_DENY rules are checked (e.g. `.env` files are blocked). If no deny rule matches, the read is allowed.
 
 Unknown tools (not `Bash` or `Read`) are passed through without evaluation.
 
-## Deny rules (TIER 1)
+## Deny rules (RULE_DENY)
 
 | Rule | Pattern |
 |------|---------|
@@ -54,7 +55,7 @@ Unknown tools (not `Bash` or `Read`) are passed through without evaluation.
 | `env-write` | Writing to `.env` files via `>`, `>>`, `tee` |
 | `env-files` | Reading `.env` / `.env.*` files (Read tool) |
 
-## Allow rules (TIER 2)
+## Allow rules (RULE_ALLOW)
 
 Common development commands are auto-approved, including:
 
@@ -64,6 +65,16 @@ Common development commands are auto-approved, including:
 - Utilities: `echo`, `pwd`, `which`, `date`, `sort`, `sed`, `awk`, `curl`, `docker`, `tar`, `zip`
 
 See [`src/bash_guard/rules/allow.toml`](src/bash_guard/rules/allow.toml) for the full list.
+
+## Ask rules (RULE_ASK)
+
+Commands that prompt user confirmation without LLM evaluation:
+
+- `ssh` — remote connections
+- `systemctl` — system service management
+- `crontab -e` / `crontab -r` — crontab editing/removal
+
+See [`src/bash_guard/rules/ask.toml`](src/bash_guard/rules/ask.toml) for the full list.
 
 ## CLI usage
 
@@ -81,10 +92,10 @@ Evaluate a command without the full hook protocol:
 
 ```bash
 bash-guard --test "ls -la"
-# ALLOW [TIER2]: Allowed by rule: ls
+# ALLOW [RULE_ALLOW]: Allowed by rule: ls
 
 bash-guard --test "sudo rm -rf /"
-# DENY [TIER1]: Blocked by deny rule: rm-rf-root
+# DENY [RULE_DENY]: Blocked by deny rule: rm-rf-root
 ```
 
 ### Debug output
@@ -102,9 +113,9 @@ bash-guard install    # Add hooks to ~/.claude/settings.json
 bash-guard uninstall  # Remove hooks from ~/.claude/settings.json
 ```
 
-## LLM judge (TIER 3)
+## LLM judge (LLM_JUDGE)
 
-When a command matches neither deny nor allow rules, `bash-guard` invokes:
+When a command matches neither deny, allow, nor ask rules, `bash-guard` invokes:
 
 ```
 claude -p "<prompt>" --model claude-haiku-4-5-20251001
@@ -117,15 +128,16 @@ The LLM evaluates the command and responds with `ALLOW`, `DENY`, or `ASK`. On ti
 ```
 src/bash_guard/
 ├── cli.py           # Entry point, argparse
-├── evaluator.py     # 3-tier evaluation engine
+├── evaluator.py     # Multi-stage evaluation engine
 ├── hook_io.py       # stdin/stdout JSON handling
 ├── rule_engine.py   # TOML rule loading and regex matching
-├── llm_judge.py     # TIER 3: claude subprocess
+├── llm_judge.py     # LLM_JUDGE: claude subprocess
 ├── installer.py     # Hook install/uninstall
 └── rules/
-    ├── deny.toml      # TIER 1 deny patterns
-    ├── allow.toml     # TIER 2 allow patterns
-    └── llm_prompt.txt # TIER 3 prompt template
+    ├── deny.toml      # RULE_DENY patterns
+    ├── allow.toml     # RULE_ALLOW patterns
+    ├── ask.toml       # RULE_ASK patterns
+    └── llm_prompt.txt # LLM_JUDGE prompt template
 ```
 
 ## Development

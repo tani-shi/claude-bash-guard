@@ -41,7 +41,9 @@ def main(argv: list[str] | None = None) -> None:
         "--decision", choices=["allow", "deny", "ask"], help="Filter by decision"
     )
     log_parser.add_argument(
-        "--tier", type=int, choices=[1, 2, 3], help="Filter by tier (1, 2, or 3)"
+        "--stage",
+        choices=["RULE_DENY", "RULE_ALLOW", "RULE_ASK", "LLM_JUDGE"],
+        help="Filter by stage",
     )
     log_parser.add_argument(
         "--since", help="Show records since (e.g. 1h, 30m, 2d)"
@@ -103,9 +105,9 @@ def _run_test(command: str, *, explain: bool = False) -> None:
         print("PASS (unknown tool, passthrough)")
         return
 
-    decision, reason, tier = result
-    logger.log_evaluation(hook_input, decision, reason, tier, elapsed_ms)
-    print(f"{decision.upper()} [{tier}]: {reason}")
+    decision, reason, stage = result
+    logger.log_evaluation(hook_input, decision, reason, stage, elapsed_ms)
+    print(f"{decision.upper()} [{stage}]: {reason}")
 
     if explain:
         print(f"  Command: {command}", file=sys.stderr)
@@ -127,12 +129,12 @@ def _run_hook(*, explain: bool = False) -> None:
         # Unknown tool: passthrough (exit 0, no output)
         return
 
-    decision, reason, tier = result
-    logger.log_evaluation(hook_input, decision, reason, tier, elapsed_ms)
+    decision, reason, stage = result
+    logger.log_evaluation(hook_input, decision, reason, stage, elapsed_ms)
 
     if explain:
         tool_name = hook_input.get("tool_name", "")
-        print(f"[bash-guard] {tool_name}: {decision} [{tier}] {reason}", file=sys.stderr)
+        print(f"[bash-guard] {tool_name}: {decision} [{stage}] {reason}", file=sys.stderr)
 
     hook_io.write_output(decision, reason)
 
@@ -148,12 +150,11 @@ def _run_log(args: argparse.Namespace) -> None:
         return
 
     since_ts = _parse_since(args.since) if args.since else None
-    tier_str = f"TIER{args.tier}" if args.tier else None
 
     records = logger.iter_logs(
         since=since_ts,
         decision=args.decision,
-        tier=tier_str,
+        stage=args.stage,
         limit=args.n,
         newest_first=not args.tail,
     )
@@ -219,13 +220,13 @@ def _print_record(rec: dict) -> None:
         ts_display = ts
 
     decision = rec.get("decision", "").upper()
-    tier = rec.get("tier", "")
+    stage = rec.get("stage", "")
     tool_name = rec.get("tool_name", "")
     input_val = rec.get("input", "")
     reason = rec.get("reason", "")
     elapsed = rec.get("elapsed_ms", 0)
 
-    print(f"{ts_display} {decision} [{tier}] {tool_name}: {input_val}")
+    print(f"{ts_display} {decision} [{stage}] {tool_name}: {input_val}")
     print(f"  {reason} ({elapsed}ms)")
 
 

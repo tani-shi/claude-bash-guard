@@ -22,9 +22,9 @@ class TestBashEvaluation:
             "tool_input": {"command": "sudo rm -rf /"},
             "cwd": "/tmp",
         }
-        decision, reason, tier = evaluate(hook_input)
+        decision, reason, stage = evaluate(hook_input)
         assert decision == "deny"
-        assert tier == "TIER1"
+        assert stage == "RULE_DENY"
 
     def test_allow_ls(self):
         hook_input = {
@@ -32,9 +32,9 @@ class TestBashEvaluation:
             "tool_input": {"command": "ls -la"},
             "cwd": "/tmp",
         }
-        decision, reason, tier = evaluate(hook_input)
+        decision, reason, stage = evaluate(hook_input)
         assert decision == "allow"
-        assert tier == "TIER2"
+        assert stage == "RULE_ALLOW"
 
     def test_allow_git_status(self):
         hook_input = {
@@ -42,31 +42,31 @@ class TestBashEvaluation:
             "tool_input": {"command": "git status"},
             "cwd": "/tmp",
         }
-        decision, reason, tier = evaluate(hook_input)
+        decision, reason, stage = evaluate(hook_input)
         assert decision == "allow"
-        assert tier == "TIER2"
+        assert stage == "RULE_ALLOW"
 
     @patch("bash_guard.llm_judge.evaluate", return_value=("allow", "Safe"))
-    def test_tier3_llm_fallback(self, mock_llm):
+    def test_stage3_llm_fallback(self, mock_llm):
         hook_input = {
             "tool_name": "Bash",
             "tool_input": {"command": "some-obscure-command --flag"},
             "cwd": "/tmp",
         }
-        decision, reason, tier = evaluate(hook_input)
-        assert tier == "TIER3"
+        decision, reason, stage = evaluate(hook_input)
+        assert stage == "LLM_JUDGE"
         mock_llm.assert_called_once_with("some-obscure-command --flag", "/tmp")
 
     @patch("bash_guard.llm_judge.evaluate", return_value=("deny", "Dangerous"))
-    def test_tier3_deny(self, mock_llm):
+    def test_stage3_deny(self, mock_llm):
         hook_input = {
             "tool_name": "Bash",
             "tool_input": {"command": "some-dangerous-command"},
             "cwd": "/tmp",
         }
-        decision, reason, tier = evaluate(hook_input)
+        decision, reason, stage = evaluate(hook_input)
         assert decision == "deny"
-        assert tier == "TIER3"
+        assert stage == "LLM_JUDGE"
 
 
 class TestReadEvaluation:
@@ -75,16 +75,16 @@ class TestReadEvaluation:
             "tool_name": "Read",
             "tool_input": {"file_path": "/project/.env"},
         }
-        decision, reason, tier = evaluate(hook_input)
+        decision, reason, stage = evaluate(hook_input)
         assert decision == "deny"
-        assert tier == "TIER1"
+        assert stage == "RULE_DENY"
 
     def test_allow_normal_file(self):
         hook_input = {
             "tool_name": "Read",
             "tool_input": {"file_path": "/project/README.md"},
         }
-        decision, reason, tier = evaluate(hook_input)
+        decision, reason, stage = evaluate(hook_input)
         assert decision == "allow"
 
 
