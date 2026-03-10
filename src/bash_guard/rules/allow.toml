@@ -159,6 +159,10 @@ name = "gog-deep-read"
 command_regex = '''^\s*gog\s+\S+\s+\S+\s+(get|list|search|status|find|space|opens|url|profile|roster)(\s|$)'''
 
 [[rules]]
+name = "pdftotext"
+command_regex = '''^\s*pdftotext(\s|$)'''
+
+[[rules]]
 name = "fam-read"
 command_regex = '''^\s*fam\s+(show|export)(\s|$)'''
 
