@@ -41,6 +41,11 @@ def _evaluate_bash(
     if allow_match:
         return "allow", f"Allowed by rule: {allow_match.name}", "RULE_ALLOW"
 
+    # Ask rules
+    ask_match = rules.match_ask(command)
+    if ask_match:
+        return "ask", f"Matched ask rule: {ask_match.name}", "RULE_ASK"
+
     # LLM judge
     cwd = hook_input.get("cwd", ".")
     decision, reason = llm_judge.evaluate(command, cwd)

@@ -69,6 +69,28 @@ class TestBashEvaluation:
         assert stage == "LLM_JUDGE"
 
 
+    def test_ask_ssh(self):
+        hook_input = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "ssh user@host"},
+            "cwd": "/tmp",
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "ask"
+        assert stage == "RULE_ASK"
+
+    def test_allow_overrides_ask(self):
+        """Allow rules take priority over ask rules."""
+        hook_input = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "ls -la"},
+            "cwd": "/tmp",
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "allow"
+        assert stage == "RULE_ALLOW"
+
+
 class TestReadEvaluation:
     def test_deny_env_file(self):
         hook_input = {

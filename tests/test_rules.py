@@ -5,6 +5,7 @@ import pytest
 from bash_guard.rule_engine import (
     load_rules,
     match_allow,
+    match_ask,
     match_deny,
     match_read_deny,
     reset_cache,
@@ -170,6 +171,28 @@ class TestReadDenyRules:
         assert match_read_deny("environment.py") is None
 
 
+class TestAskRules:
+    def test_ssh(self):
+        assert match_ask("ssh user@host") is not None
+        assert match_ask("ssh -p 22 user@host") is not None
+
+    def test_systemctl(self):
+        assert match_ask("systemctl restart nginx") is not None
+        assert match_ask("systemctl status sshd") is not None
+
+    def test_crontab_edit(self):
+        assert match_ask("crontab -e") is not None
+        assert match_ask("crontab -r") is not None
+
+    def test_crontab_list_not_matched(self):
+        assert match_ask("crontab -l") is None
+
+    def test_safe_commands_not_asked(self):
+        assert match_ask("ls -la") is None
+        assert match_ask("git status") is None
+        assert match_ask("echo hello") is None
+
+
 class TestLoadRules:
     def test_load_deny(self):
         ruleset = load_rules(kind="deny")
@@ -178,4 +201,8 @@ class TestLoadRules:
 
     def test_load_allow(self):
         ruleset = load_rules(kind="allow")
+        assert len(ruleset.command_rules) > 0
+
+    def test_load_ask(self):
+        ruleset = load_rules(kind="ask")
         assert len(ruleset.command_rules) > 0

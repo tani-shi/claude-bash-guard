@@ -1,0 +1,13 @@
+# Commands that should prompt user confirmation without LLM evaluation.
+
+[[rules]]
+name = "ssh"
+command_regex = '''^\s*ssh\s+'''
+
+[[rules]]
+name = "systemctl"
+command_regex = '''^\s*systemctl\s+'''
+
+[[rules]]
+name = "crontab-edit"
+command_regex = '''^\s*crontab\s+(-e|-r)'''

@@ -24,6 +24,7 @@ class RuleSet:
 # Module-level cache
 _deny_rules: RuleSet | None = None
 _allow_rules: RuleSet | None = None
+_ask_rules: RuleSet | None = None
 
 
 def _parse_rules(data: dict[str, Any]) -> RuleSet:
@@ -69,6 +70,14 @@ def get_allow_rules() -> RuleSet:
     return _allow_rules
 
 
+def get_ask_rules() -> RuleSet:
+    """Get cached ask rules."""
+    global _ask_rules
+    if _ask_rules is None:
+        _ask_rules = load_rules(kind="ask")
+    return _ask_rules
+
+
 def match_deny(command: str) -> Rule | None:
     """Check if command matches any deny rule."""
     for rule in get_deny_rules().command_rules:
@@ -85,6 +94,14 @@ def match_allow(command: str) -> Rule | None:
     return None
 
 
+def match_ask(command: str) -> Rule | None:
+    """Check if command matches any ask rule."""
+    for rule in get_ask_rules().command_rules:
+        if rule.pattern.search(command):
+            return rule
+    return None
+
+
 def match_read_deny(file_path: str) -> Rule | None:
     """Check if file path matches any read deny rule."""
     for rule in get_deny_rules().read_rules:
@@ -95,6 +112,7 @@ def match_read_deny(file_path: str) -> Rule | None:
 
 def reset_cache() -> None:
     """Reset the rule cache (useful for testing)."""
-    global _deny_rules, _allow_rules
+    global _deny_rules, _allow_rules, _ask_rules
     _deny_rules = None
     _allow_rules = None
+    _ask_rules = None
