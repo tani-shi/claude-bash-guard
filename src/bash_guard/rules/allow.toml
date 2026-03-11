@@ -139,6 +139,10 @@ name = "help-flag"
 command_regex = '''\s--help(\s|$)'''
 
 [[rules]]
+name = "help-subcommand"
+command_regex = '''^\s*\S+\s+help(\s|$)'''
+
+[[rules]]
 name = "gh-read"
 command_regex = '''^\s*gh\s+(status|api|search)(\s|$)'''
 
