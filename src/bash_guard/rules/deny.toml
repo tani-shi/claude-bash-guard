@@ -33,3 +33,15 @@ command_regex = '''(>|>>|tee\s+).*\.env(\s|$|\..*$)'''
 [[read_rules]]
 name = "env-files"
 path_regex = '''(^|/)\.env(\..+)?$'''
+
+[[rules]]
+name = "gcloud-secrets-access"
+command_regex = '''gcloud\s+secrets\s+versions\s+access(\s|$)'''
+
+[[rules]]
+name = "gcloud-print-token"
+command_regex = '''gcloud\s+auth\s+print-(access|identity)-token(\s|$)'''
+
+[[rules]]
+name = "gcloud-service-account-keys"
+command_regex = '''gcloud\s+iam\s+service-accounts\s+keys\s+create(\s|$)'''
