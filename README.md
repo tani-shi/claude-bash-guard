@@ -37,9 +37,11 @@ stdin JSON → RULE_DENY → RULE_ALLOW → RULE_ASK → LLM_JUDGE → stdout JS
 | RULE_ASK | Regex ask list | Instant | Prompts user confirmation for commands that need review (e.g. `ssh`, `systemctl`) |
 | LLM_JUDGE | LLM judge | ~2-5s | Calls `claude -p` with haiku to evaluate ambiguous commands |
 
-For the `Read` tool, only RULE_DENY rules are checked (e.g. `.env` files are blocked). If no deny rule matches, the read is allowed.
+For the `Read` tool, only RULE_DENY rules are checked (see [Read deny rules](#read-deny-rules-rule_deny) below). If no deny rule matches, the read is allowed.
 
-Unknown tools (not `Bash` or `Read`) are passed through without evaluation.
+Read-only tools with no side effects (`Grep`, `Glob`, `WebFetch`, `WebSearch`) are auto-allowed without evaluation.
+
+Other tools (e.g. `Write`, `Edit`, MCP tools) are passed through without evaluation (Claude Code default behavior applies).
 
 ## Deny rules (RULE_DENY)
 
@@ -54,6 +56,50 @@ Unknown tools (not `Bash` or `Read`) are passed through without evaluation.
 | `force-push-main` | `git push --force` to `main`/`master` (allows `--force-with-lease`) |
 | `env-write` | Writing to `.env` files via `>`, `>>`, `tee` |
 | `env-files` | Reading `.env` / `.env.*` files (Read tool) |
+
+## Read deny rules (RULE_DENY)
+
+Sensitive files blocked from the `Read` tool:
+
+| Category | Rule | Pattern |
+|----------|------|---------|
+| Env/config | `env-files` | `.env`, `.env.*` |
+| Env/config | `envrc` | `.envrc` |
+| Env/config | `secrets-files` | `secrets.{yml,yaml,json,toml}` |
+| Env/config | `terraform-vars` | `terraform.tfvars`, `terraform.tfvars.json` |
+| SSH/keys | `ssh-dir` | `.ssh/*` |
+| SSH/keys | `gnupg-dir` | `.gnupg/*` |
+| SSH/keys | `private-key-files` | `*.pem`, `*.key` (excludes `*.pub.pem`) |
+| SSH/keys | `keystore-files` | `*.p12`, `*.pfx`, `*.jks`, `*.keystore` |
+| Cloud | `aws-dir` | `.aws/*` |
+| Cloud | `gcloud-dir` | `.config/gcloud/*` |
+| Cloud | `azure-dir` | `.azure/*` |
+| Cloud | `credentials-json` | `credentials.json`, `client_secret.json`, `service[-_]account*.json` |
+| Cloud | `terraform-rc` | `.terraformrc` |
+| Container | `docker-config` | `.docker/config.json` |
+| Container | `kube-config` | `.kube/config` |
+| Dev tools | `netrc` | `.netrc` |
+| Dev tools | `npmrc` | `.npmrc` |
+| Dev tools | `pypirc` | `.pypirc` |
+| Dev tools | `gh-hosts` | `.config/gh/hosts.yml` |
+| Dev tools | `maven-settings` | `.m2/settings.xml` |
+| Dev tools | `gradle-properties` | `.gradle/gradle.properties` |
+| Dev tools | `boto-config` | `.boto`, `.s3cfg` |
+| Database | `pgpass` | `.pgpass` |
+| Database | `mycnf` | `.my.cnf` |
+| Other | `htpasswd` | `.htpasswd` |
+| Other | `vault-token` | `.vault-token` |
+
+See [`src/claude_sentinel/rules/deny.toml`](src/claude_sentinel/rules/deny.toml) for exact regex patterns.
+
+## Auto-allow tools (AUTO_ALLOW)
+
+Read-only tools with no side effects are automatically allowed without rule evaluation:
+
+- `Grep` — content search
+- `Glob` — file pattern matching
+- `WebFetch` — fetch web content
+- `WebSearch` — web search
 
 ## Allow rules (RULE_ALLOW)
 

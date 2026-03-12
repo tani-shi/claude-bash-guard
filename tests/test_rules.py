@@ -159,16 +159,137 @@ class TestAllowRules:
 
 
 class TestReadDenyRules:
+    # A. Environment / config files
     def test_env_files(self):
         assert match_read_deny(".env") is not None
         assert match_read_deny("/home/user/.env") is not None
         assert match_read_deny("/project/.env.local") is not None
         assert match_read_deny("/project/.env.production") is not None
 
+    def test_envrc(self):
+        assert match_read_deny(".envrc") is not None
+        assert match_read_deny("/project/.envrc") is not None
+
+    def test_secrets_files(self):
+        assert match_read_deny("secrets.yml") is not None
+        assert match_read_deny("/project/secrets.yaml") is not None
+        assert match_read_deny("secrets.json") is not None
+        assert match_read_deny("secrets.toml") is not None
+
+    def test_terraform_vars(self):
+        assert match_read_deny("terraform.tfvars") is not None
+        assert match_read_deny("terraform.tfvars.json") is not None
+        assert match_read_deny("/infra/terraform.tfvars") is not None
+
+    # B. SSH / crypto keys
+    def test_ssh_dir(self):
+        assert match_read_deny("/home/user/.ssh/id_rsa") is not None
+        assert match_read_deny("/home/user/.ssh/config") is not None
+        assert match_read_deny(".ssh/known_hosts") is not None
+
+    def test_gnupg_dir(self):
+        assert match_read_deny("/home/user/.gnupg/secring.gpg") is not None
+        assert match_read_deny(".gnupg/trustdb.gpg") is not None
+
+    def test_private_key_files(self):
+        assert match_read_deny("server.pem") is not None
+        assert match_read_deny("/etc/ssl/private/server.key") is not None
+        assert match_read_deny("cert.pem") is not None
+
+    def test_keystore_files(self):
+        assert match_read_deny("keystore.p12") is not None
+        assert match_read_deny("app.pfx") is not None
+        assert match_read_deny("release.jks") is not None
+        assert match_read_deny("my.keystore") is not None
+
+    # C. Cloud provider credentials
+    def test_aws_dir(self):
+        assert match_read_deny("/home/user/.aws/credentials") is not None
+        assert match_read_deny("/home/user/.aws/config") is not None
+        assert match_read_deny(".aws/credentials") is not None
+
+    def test_gcloud_dir(self):
+        assert match_read_deny("/home/user/.config/gcloud/application_default_credentials.json") is not None
+        assert match_read_deny(".config/gcloud/properties") is not None
+
+    def test_azure_dir(self):
+        assert match_read_deny("/home/user/.azure/accessTokens.json") is not None
+        assert match_read_deny(".azure/azureProfile.json") is not None
+
+    def test_credentials_json(self):
+        assert match_read_deny("credentials.json") is not None
+        assert match_read_deny("/project/client_secret.json") is not None
+        assert match_read_deny("service-account-key.json") is not None
+        assert match_read_deny("service_account_prod.json") is not None
+
+    def test_terraform_rc(self):
+        assert match_read_deny("/home/user/.terraformrc") is not None
+        assert match_read_deny(".terraformrc") is not None
+
+    # D. Container / orchestration
+    def test_docker_config(self):
+        assert match_read_deny("/home/user/.docker/config.json") is not None
+        assert match_read_deny(".docker/config.json") is not None
+
+    def test_kube_config(self):
+        assert match_read_deny("/home/user/.kube/config") is not None
+        assert match_read_deny(".kube/config") is not None
+
+    # E. Package manager / dev tool auth
+    def test_netrc(self):
+        assert match_read_deny("/home/user/.netrc") is not None
+
+    def test_npmrc(self):
+        assert match_read_deny("/home/user/.npmrc") is not None
+        assert match_read_deny("/project/.npmrc") is not None
+
+    def test_pypirc(self):
+        assert match_read_deny("/home/user/.pypirc") is not None
+
+    def test_gh_hosts(self):
+        assert match_read_deny("/home/user/.config/gh/hosts.yml") is not None
+
+    def test_maven_settings(self):
+        assert match_read_deny("/home/user/.m2/settings.xml") is not None
+
+    def test_gradle_properties(self):
+        assert match_read_deny("/home/user/.gradle/gradle.properties") is not None
+
+    def test_boto_config(self):
+        assert match_read_deny("/home/user/.boto") is not None
+        assert match_read_deny("/home/user/.s3cfg") is not None
+
+    # F. Database
+    def test_pgpass(self):
+        assert match_read_deny("/home/user/.pgpass") is not None
+
+    def test_mycnf(self):
+        assert match_read_deny("/home/user/.my.cnf") is not None
+
+    # G. Other
+    def test_htpasswd(self):
+        assert match_read_deny("/etc/.htpasswd") is not None
+
+    def test_vault_token(self):
+        assert match_read_deny("/home/user/.vault-token") is not None
+
+    # False positives: these should NOT match
     def test_non_env_files(self):
         assert match_read_deny("README.md") is None
         assert match_read_deny("/home/user/config.toml") is None
         assert match_read_deny("environment.py") is None
+
+    def test_public_key_not_denied(self):
+        assert match_read_deny("id_rsa.pub") is None
+
+    def test_pub_pem_not_denied(self):
+        assert match_read_deny("foo.pub.pem") is None
+
+    def test_terraform_state_not_denied(self):
+        assert match_read_deny("terraform.tfstate") is None
+
+    def test_aws_lambda_dir_not_denied(self):
+        assert match_read_deny("/project/.aws-lambda/handler.py") is None
 
 
 class TestAskRules:

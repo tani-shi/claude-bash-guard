@@ -110,6 +110,44 @@ class TestReadEvaluation:
         assert decision == "allow"
 
 
+class TestAutoAllowTools:
+    def test_grep_allowed(self):
+        hook_input = {
+            "tool_name": "Grep",
+            "tool_input": {"pattern": "foo", "path": "/project"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "allow"
+        assert stage == "AUTO_ALLOW"
+
+    def test_glob_allowed(self):
+        hook_input = {
+            "tool_name": "Glob",
+            "tool_input": {"pattern": "**/*.py"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "allow"
+        assert stage == "AUTO_ALLOW"
+
+    def test_webfetch_allowed(self):
+        hook_input = {
+            "tool_name": "WebFetch",
+            "tool_input": {"url": "https://example.com"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "allow"
+        assert stage == "AUTO_ALLOW"
+
+    def test_websearch_allowed(self):
+        hook_input = {
+            "tool_name": "WebSearch",
+            "tool_input": {"query": "python docs"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "allow"
+        assert stage == "AUTO_ALLOW"
+
+
 class TestUnknownTool:
     def test_passthrough(self):
         hook_input = {
