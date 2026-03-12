@@ -8,14 +8,14 @@ from unittest.mock import patch
 
 import pytest
 
-from bash_guard import logger
+from claude_sentinel import logger
 
 
 @pytest.fixture()
 def log_dir(tmp_path):
     """Use a temporary directory for logs."""
     d = tmp_path / "logs"
-    with patch.dict(os.environ, {"BASH_GUARD_LOG_DIR": str(d)}):
+    with patch.dict(os.environ, {"CLAUDE_SENTINEL_LOG_DIR": str(d)}):
         yield d
 
 
@@ -202,12 +202,12 @@ class TestIterLogs:
 class TestGetLogDir:
     def test_default(self):
         with patch.dict(os.environ, {}, clear=True):
-            # Remove BASH_GUARD_LOG_DIR if set
-            os.environ.pop("BASH_GUARD_LOG_DIR", None)
+            # Remove CLAUDE_SENTINEL_LOG_DIR if set
+            os.environ.pop("CLAUDE_SENTINEL_LOG_DIR", None)
             d = logger.get_log_dir()
             assert d == logger.DEFAULT_LOG_DIR
 
     def test_env_override(self):
-        with patch.dict(os.environ, {"BASH_GUARD_LOG_DIR": "/custom/logs"}):
+        with patch.dict(os.environ, {"CLAUDE_SENTINEL_LOG_DIR": "/custom/logs"}):
             d = logger.get_log_dir()
             assert d == Path("/custom/logs")

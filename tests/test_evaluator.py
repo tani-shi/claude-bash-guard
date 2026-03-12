@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from bash_guard.evaluator import evaluate
-from bash_guard.rule_engine import reset_cache
+from claude_sentinel.evaluator import evaluate
+from claude_sentinel.rule_engine import reset_cache
 
 
 @pytest.fixture(autouse=True)
@@ -46,7 +46,7 @@ class TestBashEvaluation:
         assert decision == "allow"
         assert stage == "RULE_ALLOW"
 
-    @patch("bash_guard.llm_judge.evaluate", return_value=("allow", "Safe"))
+    @patch("claude_sentinel.llm_judge.evaluate", return_value=("allow", "Safe"))
     def test_stage3_llm_fallback(self, mock_llm):
         hook_input = {
             "tool_name": "Bash",
@@ -57,7 +57,7 @@ class TestBashEvaluation:
         assert stage == "LLM_JUDGE"
         mock_llm.assert_called_once_with("some-obscure-command --flag", "/tmp")
 
-    @patch("bash_guard.llm_judge.evaluate", return_value=("deny", "Dangerous"))
+    @patch("claude_sentinel.llm_judge.evaluate", return_value=("deny", "Dangerous"))
     def test_stage3_deny(self, mock_llm):
         hook_input = {
             "tool_name": "Bash",

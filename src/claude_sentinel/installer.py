@@ -1,4 +1,4 @@
-"""Install/uninstall bash-guard hooks into Claude Code settings."""
+"""Install/uninstall claude-sentinel hooks into Claude Code settings."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ HOOK_ENTRIES = [
         "hooks": [
             {
                 "type": "command",
-                "command": "bash-guard",
+                "command": "claude-sentinel",
             }
         ],
     }
@@ -22,7 +22,7 @@ HOOK_ENTRIES = [
 
 
 def install(settings_path: Path | None = None) -> str:
-    """Install bash-guard hooks into Claude Code settings.
+    """Install claude-sentinel hooks into Claude Code settings.
 
     Creates a backup before modifying settings.
     Returns a status message.
@@ -42,7 +42,7 @@ def install(settings_path: Path | None = None) -> str:
 
     # Check if already installed
     already_installed = any(
-        hook.get("command") == "bash-guard"
+        hook.get("command") == "claude-sentinel"
         for entry in existing
         for hook in entry.get("hooks", [])
     )
@@ -51,11 +51,11 @@ def install(settings_path: Path | None = None) -> str:
         hooks["PermissionRequest"] = existing
 
     _save_settings(path, settings)
-    return f"bash-guard hooks installed to {path}"
+    return f"claude-sentinel hooks installed to {path}"
 
 
 def uninstall(settings_path: Path | None = None) -> str:
-    """Remove bash-guard hooks from Claude Code settings.
+    """Remove claude-sentinel hooks from Claude Code settings.
 
     Returns a status message.
     """
@@ -70,7 +70,7 @@ def uninstall(settings_path: Path | None = None) -> str:
         entry
         for entry in existing
         if not any(
-            hook.get("command") == "bash-guard" for hook in entry.get("hooks", [])
+            hook.get("command") == "claude-sentinel" for hook in entry.get("hooks", [])
         )
     ]
     if len(filtered) != len(existing):
@@ -82,8 +82,8 @@ def uninstall(settings_path: Path | None = None) -> str:
 
     if modified:
         _save_settings(path, settings)
-        return f"bash-guard hooks removed from {path}"
-    return "bash-guard hooks not found in settings"
+        return f"claude-sentinel hooks removed from {path}"
+    return "claude-sentinel hooks not found in settings"
 
 
 def _load_settings(path: Path) -> dict:

@@ -2,7 +2,7 @@
 
 import pytest
 
-from bash_guard.rule_engine import (
+from claude_sentinel.rule_engine import (
     load_rules,
     match_allow,
     match_ask,

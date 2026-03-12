@@ -3,17 +3,17 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "claude-bash-guard"
+name = "claude-sentinel"
 version = "0.1.0"
-description = "Claude Code hook for evaluating Bash command safety"
+description = "Claude Code hook for evaluating tool permission requests"
 requires-python = ">=3.11"
 dependencies = []
 
 [project.scripts]
-bash-guard = "bash_guard.cli:main"
+claude-sentinel = "claude_sentinel.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/bash_guard"]
+packages = ["src/claude_sentinel"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

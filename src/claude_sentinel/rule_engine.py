@@ -47,7 +47,7 @@ def load_rules(path: str | None = None, *, kind: str = "deny") -> RuleSet:
         with open(path, "rb") as f:
             data = tomllib.load(f)
     else:
-        rules_pkg = resources.files("bash_guard.rules")
+        rules_pkg = resources.files("claude_sentinel.rules")
         filename = f"{kind}.toml"
         content = (rules_pkg / filename).read_text(encoding="utf-8")
         data = tomllib.loads(content)

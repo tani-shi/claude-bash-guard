@@ -1,4 +1,4 @@
-"""CLI entry point for bash-guard."""
+"""CLI entry point for claude-sentinel."""
 
 from __future__ import annotations
 
@@ -7,13 +7,13 @@ import json
 import sys
 import time
 
-from bash_guard import evaluator, hook_io, installer, logger
+from claude_sentinel import evaluator, hook_io, installer, logger
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        prog="bash-guard",
-        description="Claude Code hook for evaluating Bash command safety",
+        prog="claude-sentinel",
+        description="Claude Code hook for evaluating tool permission requests",
     )
     parser.add_argument(
         "--explain",
@@ -134,7 +134,7 @@ def _run_hook(*, explain: bool = False) -> None:
 
     if explain:
         tool_name = hook_input.get("tool_name", "")
-        print(f"[bash-guard] {tool_name}: {decision} [{stage}] {reason}", file=sys.stderr)
+        print(f"[claude-sentinel] {tool_name}: {decision} [{stage}] {reason}", file=sys.stderr)
 
     hook_io.write_output(decision, reason)
 

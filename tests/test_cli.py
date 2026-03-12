@@ -6,15 +6,15 @@ from unittest.mock import patch
 
 import pytest
 
-from bash_guard import logger
-from bash_guard.cli import main
+from claude_sentinel import logger
+from claude_sentinel.cli import main
 
 
 @pytest.fixture()
 def log_dir(tmp_path):
     """Use a temporary directory for logs."""
     d = tmp_path / "logs"
-    with patch.dict(os.environ, {"BASH_GUARD_LOG_DIR": str(d)}):
+    with patch.dict(os.environ, {"CLAUDE_SENTINEL_LOG_DIR": str(d)}):
         yield d
 
 
@@ -27,7 +27,7 @@ class TestHookMode:
             "session_id": "test",
             "cwd": "/tmp",
         }
-        with patch("bash_guard.hook_io.read_input", return_value=hook_input):
+        with patch("claude_sentinel.hook_io.read_input", return_value=hook_input):
             main([])
 
         output = json.loads(capsys.readouterr().out)
@@ -41,7 +41,7 @@ class TestHookMode:
             "session_id": "test",
             "cwd": "/tmp",
         }
-        with patch("bash_guard.hook_io.read_input", return_value=hook_input):
+        with patch("claude_sentinel.hook_io.read_input", return_value=hook_input):
             main([])
 
         output = json.loads(capsys.readouterr().out)
@@ -55,7 +55,7 @@ class TestHookMode:
             "session_id": "test",
             "cwd": "/tmp",
         }
-        with patch("bash_guard.hook_io.read_input", return_value=hook_input):
+        with patch("claude_sentinel.hook_io.read_input", return_value=hook_input):
             main([])
 
         assert capsys.readouterr().out == ""
@@ -68,7 +68,7 @@ class TestHookMode:
             "session_id": "test",
             "cwd": "/tmp",
         }
-        with patch("bash_guard.hook_io.read_input", return_value=hook_input):
+        with patch("claude_sentinel.hook_io.read_input", return_value=hook_input):
             main([])
 
         log_file = log_dir / "eval.jsonl"
@@ -107,14 +107,14 @@ class TestTestMode:
 class TestSubcommands:
     def test_install(self, tmp_path, capsys):
         settings_file = tmp_path / "settings.json"
-        with patch("bash_guard.installer.SETTINGS_PATH", settings_file):
+        with patch("claude_sentinel.installer.SETTINGS_PATH", settings_file):
             main(["install"])
         captured = capsys.readouterr()
         assert "installed" in captured.out
 
     def test_uninstall(self, tmp_path, capsys):
         settings_file = tmp_path / "settings.json"
-        with patch("bash_guard.installer.SETTINGS_PATH", settings_file):
+        with patch("claude_sentinel.installer.SETTINGS_PATH", settings_file):
             main(["install"])
             main(["uninstall"])
         captured = capsys.readouterr()

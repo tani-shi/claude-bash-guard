@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from bash_guard.installer import install, uninstall
+from claude_sentinel.installer import install, uninstall
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ class TestInstall:
 
         entries = settings["hooks"]["PermissionRequest"]
         assert len(entries) == 1
-        assert entries[0]["hooks"][0]["command"] == "bash-guard"
+        assert entries[0]["hooks"][0]["command"] == "claude-sentinel"
 
     def test_install_existing_settings(self, settings_file):
         settings_file.write_text(json.dumps({"someKey": "value"}))
@@ -69,7 +69,7 @@ class TestUninstall:
             "hooks": {
                 "PermissionRequest": [
                     {"matcher": "*", "hooks": [{"type": "command", "command": "other-hook"}]},
-                    {"matcher": "*", "hooks": [{"type": "command", "command": "bash-guard"}]},
+                    {"matcher": "*", "hooks": [{"type": "command", "command": "claude-sentinel"}]},
                 ]
             }
         }

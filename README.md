@@ -1,6 +1,6 @@
-# bash-guard
+# claude-sentinel
 
-A [Claude Code hook](https://docs.anthropic.com/en/docs/claude-code/hooks) that evaluates Bash commands for safety before execution. It acts as a `PermissionRequest` hook, applying a multi-stage evaluation system to automatically allow safe commands, block dangerous ones, and defer ambiguous cases to an LLM judge.
+A [Claude Code hook](https://docs.anthropic.com/en/docs/claude-code/hooks) that evaluates tool permission requests before execution. It acts as a `PermissionRequest` hook, applying a multi-stage evaluation system to automatically allow safe commands, block dangerous ones, and defer ambiguous cases to an LLM judge.
 
 ## Installation
 
@@ -11,15 +11,15 @@ uv tool install .
 Then register the hooks with Claude Code:
 
 ```bash
-bash-guard install
+claude-sentinel install
 ```
 
-This adds `bash-guard` as a `PermissionRequest` hook in `~/.claude/settings.json`. A backup (`settings.json.bak`) is created automatically.
+This adds `claude-sentinel` as a `PermissionRequest` hook in `~/.claude/settings.json`. A backup (`settings.json.bak`) is created automatically.
 
 To remove:
 
 ```bash
-bash-guard uninstall
+claude-sentinel uninstall
 ```
 
 ## How it works
@@ -64,7 +64,7 @@ Common development commands are auto-approved, including:
 - Build tools: `make`, `cargo`, `go build`, `npm`, `node`, `python`, `uv`
 - Utilities: `echo`, `pwd`, `which`, `date`, `sort`, `sed`, `awk`, `curl`, `docker`, `tar`, `zip`
 
-See [`src/bash_guard/rules/allow.toml`](src/bash_guard/rules/allow.toml) for the full list.
+See [`src/claude_sentinel/rules/allow.toml`](src/claude_sentinel/rules/allow.toml) for the full list.
 
 ## Ask rules (RULE_ASK)
 
@@ -74,7 +74,7 @@ Commands that prompt user confirmation without LLM evaluation:
 - `systemctl` — system service management
 - `crontab -e` / `crontab -r` — crontab editing/removal
 
-See [`src/bash_guard/rules/ask.toml`](src/bash_guard/rules/ask.toml) for the full list.
+See [`src/claude_sentinel/rules/ask.toml`](src/claude_sentinel/rules/ask.toml) for the full list.
 
 ## CLI usage
 
@@ -83,7 +83,7 @@ See [`src/bash_guard/rules/ask.toml`](src/bash_guard/rules/ask.toml) for the ful
 Reads JSON from stdin and writes the hook response to stdout. This is how Claude Code invokes it:
 
 ```bash
-echo '{"hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"ls"},"session_id":"s","cwd":"/tmp"}' | bash-guard
+echo '{"hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"ls"},"session_id":"s","cwd":"/tmp"}' | claude-sentinel
 ```
 
 ### Test mode
@@ -91,10 +91,10 @@ echo '{"hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"c
 Evaluate a command without the full hook protocol:
 
 ```bash
-bash-guard --test "ls -la"
+claude-sentinel --test "ls -la"
 # ALLOW [RULE_ALLOW]: Allowed by rule: ls
 
-bash-guard --test "sudo rm -rf /"
+claude-sentinel --test "sudo rm -rf /"
 # DENY [RULE_DENY]: Blocked by deny rule: rm-rf-root
 ```
 
@@ -103,19 +103,19 @@ bash-guard --test "sudo rm -rf /"
 Add `--explain` to print the decision reason to stderr:
 
 ```bash
-bash-guard --test "ls -la" --explain
+claude-sentinel --test "ls -la" --explain
 ```
 
 ### Hook management
 
 ```bash
-bash-guard install    # Add hooks to ~/.claude/settings.json
-bash-guard uninstall  # Remove hooks from ~/.claude/settings.json
+claude-sentinel install    # Add hooks to ~/.claude/settings.json
+claude-sentinel uninstall  # Remove hooks from ~/.claude/settings.json
 ```
 
 ## LLM judge (LLM_JUDGE)
 
-When a command matches neither deny, allow, nor ask rules, `bash-guard` invokes:
+When a command matches neither deny, allow, nor ask rules, `claude-sentinel` invokes:
 
 ```
 claude -p "<prompt>" --model claude-haiku-4-5-20251001
@@ -126,7 +126,7 @@ The LLM evaluates the command and responds with `ALLOW`, `DENY`, or `ASK`. On ti
 ## Project structure
 
 ```
-src/bash_guard/
+src/claude_sentinel/
 ├── cli.py           # Entry point, argparse
 ├── evaluator.py     # Multi-stage evaluation engine
 ├── hook_io.py       # stdin/stdout JSON handling
@@ -147,7 +147,7 @@ src/bash_guard/
 uv run pytest tests/ -v
 
 # Test a command locally
-uv run bash-guard --test "your-command-here"
+uv run claude-sentinel --test "your-command-here"
 ```
 
 Requires Python 3.11+ (uses `tomllib` from the standard library). Zero external runtime dependencies.

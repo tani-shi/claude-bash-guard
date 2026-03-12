@@ -9,15 +9,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
-DEFAULT_LOG_DIR = Path.home() / ".local" / "share" / "bash-guard" / "logs"
+DEFAULT_LOG_DIR = Path.home() / ".local" / "share" / "claude-sentinel" / "logs"
 LOG_FILENAME = "eval.jsonl"
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 MAX_FILES = 5
 
 
 def get_log_dir() -> Path:
-    """Return the log directory, respecting BASH_GUARD_LOG_DIR env var."""
-    env = os.environ.get("BASH_GUARD_LOG_DIR")
+    """Return the log directory, respecting CLAUDE_SENTINEL_LOG_DIR env var."""
+    env = os.environ.get("CLAUDE_SENTINEL_LOG_DIR")
     if env:
         return Path(env)
     return DEFAULT_LOG_DIR

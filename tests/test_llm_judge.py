@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from bash_guard.llm_judge import _parse_response, evaluate
+from claude_sentinel.llm_judge import _parse_response, evaluate
 
 
 class TestParseResponse:
@@ -36,7 +36,7 @@ class TestParseResponse:
 
 
 class TestEvaluate:
-    @patch("bash_guard.llm_judge.subprocess.run")
+    @patch("claude_sentinel.llm_judge.subprocess.run")
     def test_successful_allow(self, mock_run):
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = "ALLOW\nSafe command"
@@ -44,7 +44,7 @@ class TestEvaluate:
         assert decision == "allow"
         assert reason == "Safe command"
 
-    @patch("bash_guard.llm_judge.subprocess.run")
+    @patch("claude_sentinel.llm_judge.subprocess.run")
     def test_timeout(self, mock_run):
         import subprocess
 
@@ -53,14 +53,14 @@ class TestEvaluate:
         assert decision == "ask"
         assert "timed out" in reason
 
-    @patch("bash_guard.llm_judge.subprocess.run")
+    @patch("claude_sentinel.llm_judge.subprocess.run")
     def test_claude_not_found(self, mock_run):
         mock_run.side_effect = FileNotFoundError()
         decision, reason = evaluate("some-command", "/tmp")
         assert decision == "ask"
         assert "not found" in reason
 
-    @patch("bash_guard.llm_judge.subprocess.run")
+    @patch("claude_sentinel.llm_judge.subprocess.run")
     def test_nonzero_exit(self, mock_run):
         mock_run.return_value.returncode = 1
         mock_run.return_value.stdout = ""

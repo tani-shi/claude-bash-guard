@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from bash_guard import llm_judge, rule_engine as rules
+from claude_sentinel import llm_judge, rule_engine as rules
 
 
 def evaluate(hook_input: dict[str, Any]) -> tuple[str, str, str] | None:

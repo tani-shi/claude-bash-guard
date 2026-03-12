@@ -9,7 +9,7 @@ from importlib import resources
 
 def _load_prompt_template() -> str:
     """Load the LLM prompt template."""
-    rules_pkg = resources.files("bash_guard.rules")
+    rules_pkg = resources.files("claude_sentinel.rules")
     return (rules_pkg / "llm_prompt.txt").read_text(encoding="utf-8")
 
 
