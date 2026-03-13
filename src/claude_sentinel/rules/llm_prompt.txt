@@ -6,13 +6,20 @@ Evaluate the following command for safety. Consider:
 3. Does it make network requests that could leak data?
 4. Does it modify system configuration?
 5. Is it a normal development workflow command?
+6. Does it have EXTERNAL IMPACT beyond the local machine? Examples:
+   - Publishing packages to registries (npm publish, cargo publish, docker push)
+   - Deploying to production or cloud environments
+   - Sending messages or notifications to external services
+   - Creating/modifying resources in external APIs (GitHub PRs/issues, cloud resources)
+   - Mutating data via HTTP POST/PUT/DELETE to external endpoints
+   Commands with external impact should be classified as ASK even if they appear safe.
 
 Working directory: {cwd}
 Command: {command}
 
 Respond with EXACTLY one of these three words on the first line, followed by a brief reason on the second line:
-- ALLOW: The command is safe for development use
+- ALLOW: The command is safe for local development use with no external impact
 - DENY: The command is dangerous or could cause harm
-- ASK: The command needs human review (unclear intent or moderate risk)
+- ASK: The command needs human review (unclear intent, moderate risk, or external impact)
 
 Your response (first line MUST be ALLOW, DENY, or ASK):

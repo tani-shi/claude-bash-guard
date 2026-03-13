@@ -183,19 +183,105 @@ class TestAutoAllowTools:
         "tool_name",
         [
             "mcp__claude_ai_Slack__slack_send_message",
+            "mcp__claude_ai_Slack__slack_send_message_draft",
             "mcp__claude_ai_Slack__slack_create_canvas",
             "mcp__claude_ai_Slack__slack_update_canvas",
             "mcp__claude_ai_Slack__slack_schedule_message",
         ],
     )
-    def test_slack_mcp_write_tools_not_auto_allowed(self, tool_name):
-        """Write/send tools must NOT be auto-allowed."""
+    def test_slack_mcp_write_tools_ask(self, tool_name):
+        """Write/send tools must require confirmation (ASK)."""
         hook_input = {
             "tool_name": tool_name,
             "tool_input": {},
         }
-        result = evaluate(hook_input)
-        assert result is None
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "ask"
+        assert stage == "TOOL_ASK"
+
+
+class TestExternalImpactCommands:
+    """Commands with external impact should be ASK, not ALLOW."""
+
+    def test_docker_push_asks(self):
+        hook_input = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "docker push myimage"},
+            "cwd": "/tmp",
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "ask"
+        assert stage == "RULE_ASK"
+
+    def test_npm_publish_asks(self):
+        hook_input = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "npm publish"},
+            "cwd": "/tmp",
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "ask"
+        assert stage == "RULE_ASK"
+
+    def test_npm_run_deploy_asks(self):
+        hook_input = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "npm run deploy"},
+            "cwd": "/tmp",
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "ask"
+        assert stage == "RULE_ASK"
+
+    def test_cargo_publish_asks(self):
+        hook_input = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "cargo publish"},
+            "cwd": "/tmp",
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "ask"
+        assert stage == "RULE_ASK"
+
+    def test_curl_post_asks(self):
+        hook_input = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "curl -X POST https://api.example.com"},
+            "cwd": "/tmp",
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "ask"
+        assert stage == "RULE_ASK"
+
+    def test_make_deploy_asks(self):
+        hook_input = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "make deploy"},
+            "cwd": "/tmp",
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "ask"
+        assert stage == "RULE_ASK"
+
+    def test_aws_cp_asks(self):
+        hook_input = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "aws s3 cp file s3://bucket"},
+            "cwd": "/tmp",
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "ask"
+        assert stage == "RULE_ASK"
+
+    def test_gh_pr_create_asks(self):
+        hook_input = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "gh pr create --title test"},
+            "cwd": "/tmp",
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "ask"
+        assert stage == "RULE_ASK"
 
 
 class TestUnknownTool:

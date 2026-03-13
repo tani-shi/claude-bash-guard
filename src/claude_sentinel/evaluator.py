@@ -19,6 +19,15 @@ AUTO_ALLOW_TOOLS = {
     "mcp__claude_ai_Slack__slack_search_*",
 }
 
+# Tools that have external impact and require user confirmation.
+ASK_TOOLS = {
+    "mcp__claude_ai_Slack__slack_send_message",
+    "mcp__claude_ai_Slack__slack_send_message_draft",
+    "mcp__claude_ai_Slack__slack_schedule_message",
+    "mcp__claude_ai_Slack__slack_create_canvas",
+    "mcp__claude_ai_Slack__slack_update_canvas",
+}
+
 
 def _is_auto_allowed(tool_name: str) -> bool:
     """Check if a tool matches any AUTO_ALLOW_TOOLS entry (exact or glob)."""
@@ -40,6 +49,8 @@ def evaluate(hook_input: dict[str, Any]) -> tuple[str, str, str] | None:
         return _evaluate_read(tool_input)
     elif _is_auto_allowed(tool_name):
         return "allow", f"Auto-allowed tool: {tool_name}", "AUTO_ALLOW"
+    elif tool_name in ASK_TOOLS:
+        return "ask", f"External impact tool requires confirmation: {tool_name}", "TOOL_ASK"
     else:
         # Unknown tool: passthrough
         return None

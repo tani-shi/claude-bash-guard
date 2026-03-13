@@ -35,3 +35,75 @@ command_regex = '''^\s*kubectl\s+(apply|delete|create|replace|patch|edit|rollout
 [[rules]]
 name = "helm-mutate"
 command_regex = '''^\s*helm\s+(install|upgrade|uninstall|rollback)(\s|$)'''
+
+# --- Package publishing ---
+[[rules]]
+name = "npm-publish"
+command_regex = '''^\s*(npm|yarn|pnpm)\s+publish(\s|$)'''
+
+[[rules]]
+name = "cargo-publish"
+command_regex = '''^\s*cargo\s+publish(\s|$)'''
+
+[[rules]]
+name = "uv-publish"
+command_regex = '''^\s*uv\s+publish(\s|$)'''
+
+[[rules]]
+name = "gem-push"
+command_regex = '''^\s*gem\s+push(\s|$)'''
+
+[[rules]]
+name = "twine-upload"
+command_regex = '''^\s*twine\s+upload(\s|$)'''
+
+# --- Container registry push ---
+[[rules]]
+name = "docker-push"
+command_regex = '''^\s*docker\s+(push|buildx\s+.*--push)(\s|$)'''
+
+# --- GitHub mutation operations ---
+[[rules]]
+name = "gh-mutate"
+command_regex = '''^\s*gh\s+(pr|issue)\s+(create|close|merge|reopen|edit|comment|review)(\s|$)'''
+
+[[rules]]
+name = "gh-release"
+command_regex = '''^\s*gh\s+release\s+(create|delete|edit|upload)(\s|$)'''
+
+[[rules]]
+name = "gh-repo-mutate"
+command_regex = '''^\s*gh\s+repo\s+(create|delete|fork|rename|archive)(\s|$)'''
+
+[[rules]]
+name = "gh-api-mutate"
+command_regex = '''^\s*gh\s+api\s+.*(-X|--method)\s+(POST|PUT|DELETE|PATCH)'''
+
+# --- git push force (non-main; main/master is denied) ---
+[[rules]]
+name = "git-push-force"
+command_regex = '''^\s*git\s+push\s+.*--force(?!-with-lease)'''
+
+# --- curl/wget with mutation methods ---
+[[rules]]
+name = "curl-mutate"
+command_regex = '''^\s*(curl|wget)\s+.*(-X|--request)\s+(POST|PUT|DELETE|PATCH)'''
+
+[[rules]]
+name = "curl-data"
+command_regex = '''^\s*curl\s+.*(-d\s|--data\s|--data-raw\s|--data-binary\s|--data-urlencode\s)'''
+
+# --- gcloud mutation operations ---
+[[rules]]
+name = "gcloud-mutate"
+command_regex = '''^\s*gcloud\s+.*\s+(create|delete|update|set|add|remove|deploy|submit|run|import|export|enable|disable|reset|start|stop|resize|move|restore|cancel|approve|deny|revoke|bind|unbind|attach|detach|push|promote|rollback|abort|suspend|resume)(\s|$)'''
+
+# --- AWS CLI mutations (catch-all for non-read operations) ---
+[[rules]]
+name = "aws-mutate"
+command_regex = '''^\s*aws\s+'''
+
+# --- Make with external-impact targets ---
+[[rules]]
+name = "make-publish-release"
+command_regex = '''^\s*make\s+(publish|release|push)(\s|$)'''

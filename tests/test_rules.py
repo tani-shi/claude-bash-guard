@@ -85,17 +85,81 @@ class TestAllowRules:
     def test_node(self):
         assert match_allow("npm install") is not None
         assert match_allow("node app.js") is not None
+        assert match_allow("npm run test") is not None
+        assert match_allow("npm run lint") is not None
+        assert match_allow("yarn install") is not None
+        assert match_allow("pnpm build") is not None
+        assert match_allow("npx prettier --check .") is not None
+        assert match_allow("bun run test") is not None
+
+    def test_node_not_allowed(self):
+        assert match_allow("npm publish") is None
+        assert match_allow("npm run deploy") is None
+        assert match_allow("yarn publish") is None
+        assert match_allow("pnpm publish") is None
+        assert match_allow("npm run publish") is None
+        assert match_allow("npm run release") is None
+        assert match_allow("npm run push") is None
 
     def test_make(self):
         assert match_allow("make build") is not None
         assert match_allow("make") is not None
+        assert match_allow("make test") is not None
+
+    def test_make_not_allowed(self):
+        assert match_allow("make deploy") is None
+        assert match_allow("make publish") is None
+        assert match_allow("make release") is None
+        assert match_allow("make push") is None
+        assert match_allow("make tf-apply") is None
+        assert match_allow("make terraform-plan") is None
 
     def test_find_grep(self):
         assert match_allow("find . -name '*.py'") is not None
         assert match_allow("grep -r 'pattern' src/") is not None
 
+    def test_cargo(self):
+        assert match_allow("cargo build") is not None
+        assert match_allow("cargo test") is not None
+        assert match_allow("cargo run") is not None
+        assert match_allow("cargo clippy") is not None
+        assert match_allow("rustc --version") is not None
+        assert match_allow("rustup update") is not None
+
+    def test_cargo_not_allowed(self):
+        assert match_allow("cargo publish") is None
+
+    def test_docker(self):
+        assert match_allow("docker build .") is not None
+        assert match_allow("docker compose up") is not None
+        assert match_allow("docker ps") is not None
+        assert match_allow("docker run ubuntu") is not None
+        assert match_allow("docker images") is not None
+
+    def test_docker_not_allowed(self):
+        assert match_allow("docker push myimage") is None
+
+    def test_python_uv(self):
+        assert match_allow("uv run pytest") is not None
+        assert match_allow("python3 script.py") is not None
+
+    def test_python_uv_not_allowed(self):
+        assert match_allow("uv publish") is None
+
     def test_curl_simple(self):
         assert match_allow("curl https://example.com") is not None
+        assert match_allow("wget https://example.com") is not None
+
+    def test_curl_not_allowed(self):
+        assert match_allow("curl -X POST https://api.example.com") is None
+        assert match_allow("curl -d '{}' https://api.example.com") is None
+        assert match_allow("curl --data '{}' https://api.example.com") is None
+
+    def test_aws_read(self):
+        assert match_allow("aws s3 list-buckets") is not None
+        assert match_allow("aws ec2 describe-instances --region us-east-1") is not None
+        assert match_allow("aws sts get-caller-identity") is not None
+        assert match_allow("aws s3api list-objects") is not None
 
     def test_cd(self):
         assert match_allow("cd src") is not None
@@ -347,6 +411,85 @@ class TestAskRules:
 
     def test_helm_list_not_asked(self):
         assert match_ask("helm list") is None
+
+    # --- Package publishing ---
+    def test_npm_publish(self):
+        assert match_ask("npm publish") is not None
+        assert match_ask("yarn publish") is not None
+        assert match_ask("pnpm publish") is not None
+
+    def test_cargo_publish(self):
+        assert match_ask("cargo publish") is not None
+
+    def test_uv_publish(self):
+        assert match_ask("uv publish") is not None
+
+    def test_gem_push(self):
+        assert match_ask("gem push mygem-1.0.gem") is not None
+
+    def test_twine_upload(self):
+        assert match_ask("twine upload dist/*") is not None
+
+    # --- Container registry push ---
+    def test_docker_push(self):
+        assert match_ask("docker push myimage") is not None
+        assert match_ask("docker push myregistry/myimage:latest") is not None
+
+    # --- GitHub mutation operations ---
+    def test_gh_mutate(self):
+        assert match_ask("gh pr create") is not None
+        assert match_ask("gh pr merge 123") is not None
+        assert match_ask("gh pr close 123") is not None
+        assert match_ask("gh issue create") is not None
+        assert match_ask("gh issue comment 123") is not None
+
+    def test_gh_release(self):
+        assert match_ask("gh release create v1.0") is not None
+        assert match_ask("gh release delete v1.0") is not None
+
+    def test_gh_repo_mutate(self):
+        assert match_ask("gh repo create myrepo") is not None
+        assert match_ask("gh repo delete myrepo") is not None
+        assert match_ask("gh repo fork owner/repo") is not None
+
+    def test_gh_api_mutate(self):
+        assert match_ask("gh api repos/o/r -X POST") is not None
+        assert match_ask("gh api repos/o/r --method DELETE") is not None
+
+    # --- git push force ---
+    def test_git_push_force(self):
+        assert match_ask("git push --force origin feature") is not None
+
+    def test_git_push_force_with_lease_not_asked(self):
+        assert match_ask("git push --force-with-lease origin feature") is None
+
+    # --- curl/wget mutation ---
+    def test_curl_mutate(self):
+        assert match_ask("curl -X POST https://api.example.com") is not None
+        assert match_ask("curl --request PUT https://api.example.com") is not None
+        assert match_ask("curl -X DELETE https://api.example.com") is not None
+
+    def test_curl_data(self):
+        assert match_ask("curl -d '{}' https://api.example.com") is not None
+        assert match_ask("curl --data '{}' https://api.example.com") is not None
+        assert match_ask("curl --data-raw '{}' https://api.example.com") is not None
+
+    # --- gcloud mutation ---
+    def test_gcloud_mutate(self):
+        assert match_ask("gcloud compute instances create test") is not None
+        assert match_ask("gcloud app deploy") is not None
+        assert match_ask("gcloud run deploy") is not None
+
+    # --- AWS mutation ---
+    def test_aws_mutate(self):
+        assert match_ask("aws s3 cp file s3://bucket") is not None
+        assert match_ask("aws ec2 run-instances") is not None
+
+    # --- Make with external-impact targets ---
+    def test_make_publish_release(self):
+        assert match_ask("make publish") is not None
+        assert match_ask("make release") is not None
+        assert match_ask("make push") is not None
 
     def test_safe_commands_not_asked(self):
         assert match_ask("ls -la") is None

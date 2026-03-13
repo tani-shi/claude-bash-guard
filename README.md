@@ -39,9 +39,11 @@ stdin JSON → RULE_DENY → RULE_ALLOW → RULE_ASK → LLM_JUDGE → stdout JS
 
 For the `Read` tool, only RULE_DENY rules are checked (see [Read deny rules](#read-deny-rules-rule_deny) below). If no deny rule matches, the read is allowed.
 
-Read-only tools with no side effects (`Grep`, `Glob`, `WebFetch`, `WebSearch`) are auto-allowed without evaluation.
+Read-only tools with no side effects (`Grep`, `Glob`, `WebFetch`, `WebSearch`, Slack read/search tools) are auto-allowed without evaluation.
 
-Other tools (e.g. `Write`, `Edit`, MCP tools) are passed through without evaluation (Claude Code default behavior applies).
+Tools with external impact (e.g. Slack send/schedule/canvas tools) require user confirmation (ASK).
+
+Other tools (e.g. `Write`, `Edit`) are passed through without evaluation (Claude Code default behavior applies).
 
 ## Deny rules (RULE_DENY)
 
@@ -98,8 +100,11 @@ Read-only tools with no side effects are automatically allowed without rule eval
 
 - `Grep` — content search
 - `Glob` — file pattern matching
+- `Search` — search
 - `WebFetch` — fetch web content
 - `WebSearch` — web search
+- `mcp__claude_ai_Slack__slack_read_*` — Slack read tools
+- `mcp__claude_ai_Slack__slack_search_*` — Slack search tools
 
 ## Allow rules (RULE_ALLOW)
 
@@ -107,8 +112,12 @@ Common development commands are auto-approved, including:
 
 - File operations: `ls`, `cat`, `head`, `tail`, `find`, `grep`, `cp`, `mv`, `mkdir`, `touch`, `rm`, `trash`
 - Git: `status`, `log`, `diff`, `add`, `commit`, `push` (with `--force-with-lease`), etc.
-- Build tools: `make`, `cargo`, `go build`, `npm`, `node`, `python`, `uv`
-- Utilities: `echo`, `pwd`, `which`, `date`, `sort`, `sed`, `awk`, `curl`, `docker`, `tar`, `zip`
+- Build tools: `make` (excludes `deploy`/`publish`/`release`/`push`/`tf-*`/`terraform-*` targets), `cargo` (safe subcommands only), `go build`, `node`/`npx`/`bun`, `python`, `uv` (excludes `publish`)
+- Package managers: `npm`/`yarn`/`pnpm` (safe subcommands only, excludes `publish`; `run` excludes `deploy`/`publish`/`release`/`push`)
+- Containers: `docker` (safe subcommands only, excludes `push`)
+- Network: `curl`/`wget` (excludes pipe-to-shell, POST/PUT/DELETE/PATCH methods, and `--data` flags)
+- Cloud: `aws` read operations (`list`, `describe`, `get`, `show`, `wait`), `gcloud` read operations
+- Utilities: `echo`, `pwd`, `which`, `date`, `sort`, `sed`, `awk`, `tar`, `zip`
 
 See [`src/claude_sentinel/rules/allow.toml`](src/claude_sentinel/rules/allow.toml) for the full list.
 
@@ -119,6 +128,22 @@ Commands that prompt user confirmation without LLM evaluation:
 - `ssh` — remote connections
 - `systemctl` — system service management
 - `crontab -e` / `crontab -r` — crontab editing/removal
+- `deploy` — any command containing "deploy"
+- `make deploy` / `make tf-*` / `make terraform-*` — infrastructure targets
+- `terraform apply` / `destroy` — infrastructure mutations
+- `pulumi up` / `destroy` — infrastructure mutations
+- `kubectl apply` / `delete` / `create` etc. — Kubernetes mutations
+- `helm install` / `upgrade` / `uninstall` / `rollback` — Helm mutations
+- `npm publish` / `cargo publish` / `uv publish` / `gem push` / `twine upload` — package publishing
+- `docker push` — container registry push
+- `gh pr create` / `merge` / `close`, `gh issue create`, `gh release create`, `gh repo create` etc. — GitHub mutations
+- `gh api ... -X POST/PUT/DELETE/PATCH` — GitHub API mutations
+- `git push --force` (non-main; `--force-with-lease` is allowed)
+- `curl`/`wget` with `-X POST/PUT/DELETE/PATCH` or `--data` flags — HTTP mutations
+- `gcloud ... create/delete/deploy/update` etc. — Google Cloud mutations
+- `aws ...` — AWS CLI (catch-all; read ops are allowed by ALLOW rules)
+- `make publish` / `release` / `push` — external-impact make targets
+- Slack send/schedule/canvas tools (TOOL_ASK)
 
 See [`src/claude_sentinel/rules/ask.toml`](src/claude_sentinel/rules/ask.toml) for the full list.
 
