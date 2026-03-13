@@ -7,7 +7,9 @@ name = "claude-sentinel"
 version = "0.1.0"
 description = "Claude Code hook for evaluating tool permission requests"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "claude-agent-sdk>=0.1.0",
+]
 
 [project.scripts]
 claude-sentinel = "claude_sentinel.cli:main"

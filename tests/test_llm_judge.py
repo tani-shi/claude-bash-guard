@@ -35,34 +35,33 @@ class TestParseResponse:
         assert reason == "No reason provided"
 
 
-class TestEvaluate:
-    @patch("claude_sentinel.llm_judge.subprocess.run")
-    def test_successful_allow(self, mock_run):
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = "ALLOW\nSafe command"
+class TestEvaluateSDK:
+    @patch("claude_sentinel.llm_judge.asyncio.run", return_value=("allow", "Safe command"))
+    def test_sdk_allow(self, mock_run):
         decision, reason = evaluate("ls -la", "/tmp")
         assert decision == "allow"
         assert reason == "Safe command"
 
-    @patch("claude_sentinel.llm_judge.subprocess.run")
-    def test_timeout(self, mock_run):
-        import subprocess
+    @patch("claude_sentinel.llm_judge.asyncio.run", return_value=("deny", "Dangerous command"))
+    def test_sdk_deny(self, mock_run):
+        decision, reason = evaluate("rm -rf /", "/tmp")
+        assert decision == "deny"
+        assert reason == "Dangerous command"
 
-        mock_run.side_effect = subprocess.TimeoutExpired(cmd="claude", timeout=15)
+    @patch("claude_sentinel.llm_judge.asyncio.run", return_value=("ask", "Needs review"))
+    def test_sdk_ask(self, mock_run):
+        decision, reason = evaluate("some-command", "/tmp")
+        assert decision == "ask"
+        assert reason == "Needs review"
+
+    @patch("claude_sentinel.llm_judge.asyncio.run", side_effect=TimeoutError("timed out"))
+    def test_sdk_timeout(self, mock_run):
         decision, reason = evaluate("some-command", "/tmp")
         assert decision == "ask"
         assert "timed out" in reason
 
-    @patch("claude_sentinel.llm_judge.subprocess.run")
-    def test_claude_not_found(self, mock_run):
-        mock_run.side_effect = FileNotFoundError()
+    @patch("claude_sentinel.llm_judge.asyncio.run", side_effect=Exception("connection failed"))
+    def test_sdk_error(self, mock_run):
         decision, reason = evaluate("some-command", "/tmp")
         assert decision == "ask"
-        assert "not found" in reason
-
-    @patch("claude_sentinel.llm_judge.subprocess.run")
-    def test_nonzero_exit(self, mock_run):
-        mock_run.return_value.returncode = 1
-        mock_run.return_value.stdout = ""
-        decision, reason = evaluate("some-command", "/tmp")
-        assert decision == "ask"
+        assert "connection failed" in reason
