@@ -103,6 +103,31 @@ command_regex = '''^\s*gcloud\s+.*\s+(create|delete|update|set|add|remove|deploy
 name = "aws-mutate"
 command_regex = '''^\s*aws\s+'''
 
+# --- Firebase mutation operations ---
+[[rules]]
+name = "firebase-mutate"
+command_regex = '''^\s*firebase\s+(functions:delete|firestore:delete|hosting:disable|database:(remove|set|update|push))(\s|$)'''
+
+[[rules]]
+name = "firebase-auth"
+command_regex = '''^\s*firebase\s+auth:(import|export)(\s|$)'''
+
+[[rules]]
+name = "firebase-extensions"
+command_regex = '''^\s*firebase\s+extensions:(install|uninstall|update|configure)(\s|$)'''
+
+[[rules]]
+name = "firebase-project-mutate"
+command_regex = '''^\s*firebase\s+(projects:addfirebase|apps:create|use)(\s|$)'''
+
+[[rules]]
+name = "firebase-config-mutate"
+command_regex = '''^\s*firebase\s+functions:config:(set|unset|clone)(\s|$)'''
+
+[[rules]]
+name = "firebase-login"
+command_regex = '''^\s*firebase\s+(login|logout)(\s|$)'''
+
 # --- Make with external-impact targets ---
 [[rules]]
 name = "make-publish-release"

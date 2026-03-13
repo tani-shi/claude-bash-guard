@@ -211,6 +211,10 @@ name = "gcloud-detect-analyze"
 command_regex = '''^\s*gcloud\s+.*\s+(detect-\w+|analyze-\w+|classify-text|recognize|recognize-long-running|explain|predict|raw-predict|direct-predict|direct-raw-predict)(\s|$)'''
 
 [[rules]]
+name = "firebase-read"
+command_regex = '''^\s*firebase\s+(emulators:(start|exec)|serve|init|functions:log|firestore:indexes|projects:list|apps:list|functions:config:get|login:list|setup:emulators:\w+|target|target:apply|target:clear|target:remove)(\s|$)'''
+
+[[rules]]
 name = "aws-read"
 command_regex = '''^\s*aws\s+\S+\s+(list|describe|get|show|wait)(-\w+)*(\s|$)'''
 

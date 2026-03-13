@@ -221,6 +221,19 @@ class TestAllowRules:
         assert match_allow("gog chat spaces find") is not None
         assert match_allow("gog gmail drafts get") is not None
 
+    def test_firebase_read(self):
+        assert match_allow("firebase emulators:start") is not None
+        assert match_allow("firebase serve") is not None
+        assert match_allow("firebase init") is not None
+        assert match_allow("firebase projects:list") is not None
+        assert match_allow("firebase functions:log") is not None
+        assert match_allow("firebase firestore:indexes") is not None
+
+    def test_firebase_not_allowed(self):
+        assert match_allow("firebase functions:delete myFunc") is None
+        assert match_allow("firebase firestore:delete /users") is None
+        assert match_allow("firebase deploy") is None
+
 
 class TestReadDenyRules:
     # A. Environment / config files
@@ -490,6 +503,31 @@ class TestAskRules:
         assert match_ask("make publish") is not None
         assert match_ask("make release") is not None
         assert match_ask("make push") is not None
+
+    # --- Firebase mutation ---
+    def test_firebase_mutate(self):
+        assert match_ask("firebase functions:delete myFunc") is not None
+        assert match_ask("firebase firestore:delete /users") is not None
+        assert match_ask("firebase hosting:disable") is not None
+        assert match_ask("firebase database:remove /path") is not None
+        assert match_ask("firebase database:set /path") is not None
+
+    def test_firebase_extensions(self):
+        assert match_ask("firebase extensions:install ext") is not None
+        assert match_ask("firebase extensions:uninstall ext") is not None
+
+    def test_firebase_config_mutate(self):
+        assert match_ask("firebase functions:config:set key=val") is not None
+
+    def test_firebase_login(self):
+        assert match_ask("firebase login") is not None
+        assert match_ask("firebase logout") is not None
+
+    def test_firebase_read_not_asked(self):
+        assert match_ask("firebase emulators:start") is None
+        assert match_ask("firebase serve") is None
+        assert match_ask("firebase projects:list") is None
+        assert match_ask("firebase functions:log") is None
 
     def test_safe_commands_not_asked(self):
         assert match_ask("ls -la") is None
