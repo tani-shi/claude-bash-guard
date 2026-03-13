@@ -8,6 +8,7 @@ import sys
 import time
 
 from claude_sentinel import evaluator, hook_io, installer, logger
+from claude_sentinel import rule_engine
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -30,6 +31,25 @@ def main(argv: list[str] | None = None) -> None:
     subparsers.add_parser("install", help="Install hooks into Claude Code settings")
     subparsers.add_parser(
         "uninstall", help="Remove hooks from Claude Code settings"
+    )
+
+    # rules subcommand
+    rules_parser = subparsers.add_parser("rules", help="Display all rules")
+    rules_parser.add_argument(
+        "--kind",
+        choices=["deny", "allow", "ask"],
+        help="Filter by rule kind",
+    )
+    rules_parser.add_argument(
+        "--type",
+        choices=["Bash", "Read"],
+        help="Filter by tool type",
+    )
+    rules_parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="JSON Lines output",
     )
 
     # log subcommand
@@ -73,6 +93,10 @@ def main(argv: list[str] | None = None) -> None:
         print(msg)
         return
 
+    if args.subcommand == "rules":
+        _run_rules(args)
+        return
+
     if args.subcommand == "log":
         _run_log(args)
         return
@@ -83,6 +107,70 @@ def main(argv: list[str] | None = None) -> None:
 
     # Default: hook mode — read from stdin, evaluate, write to stdout
     _run_hook(explain=args.explain)
+
+
+def _run_rules(args: argparse.Namespace) -> None:
+    """Handle the rules subcommand."""
+    kinds = [args.kind] if args.kind else ["deny", "allow", "ask"]
+    type_filter = args.type  # "Bash", "Read", or None
+
+    for kind in kinds:
+        ruleset = rule_engine.load_rules(kind=kind)
+
+        if type_filter is None or type_filter == "Bash":
+            for rule in ruleset.command_rules:
+                if args.json_output:
+                    print(
+                        json.dumps(
+                            {
+                                "kind": kind,
+                                "type": "Bash",
+                                "name": rule.name,
+                                "pattern": rule.pattern.pattern,
+                            }
+                        )
+                    )
+                else:
+                    _print_rule_section(kind, "Bash", ruleset.command_rules)
+                    break
+
+        if type_filter is None or type_filter == "Read":
+            for rule in ruleset.read_rules:
+                if args.json_output:
+                    print(
+                        json.dumps(
+                            {
+                                "kind": kind,
+                                "type": "Read",
+                                "name": rule.name,
+                                "pattern": rule.pattern.pattern,
+                            }
+                        )
+                    )
+                else:
+                    _print_rule_section(kind, "Read", ruleset.read_rules)
+                    break
+
+    # Auto-allow tools
+    if not args.kind and not type_filter:
+        if args.json_output:
+            for tool in sorted(evaluator.AUTO_ALLOW_TOOLS):
+                print(json.dumps({"kind": "auto-allow", "type": "tool", "name": tool}))
+        else:
+            print("Auto-allow tools:")
+            for tool in sorted(evaluator.AUTO_ALLOW_TOOLS):
+                print(f"  {tool}")
+
+
+def _print_rule_section(kind: str, rule_type: str, rules: list) -> None:
+    """Print a section of rules in human-readable format."""
+    if not rules:
+        return
+    label = kind.capitalize()
+    print(f"\n{label} rules ({rule_type}):")
+    max_name = max(len(r.name) for r in rules)
+    for rule in rules:
+        print(f"  {rule.name:<{max_name}}  {rule.pattern.pattern}")
 
 
 def _run_test(command: str, *, explain: bool = False) -> None:

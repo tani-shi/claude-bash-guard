@@ -7,7 +7,7 @@ from typing import Any
 from claude_sentinel import llm_judge, rule_engine as rules
 
 # Read-only tools with no side effects: auto-allow without evaluation
-_AUTO_ALLOW_TOOLS = {"Grep", "Glob", "WebFetch", "WebSearch"}
+AUTO_ALLOW_TOOLS = {"Grep", "Glob", "WebFetch", "WebSearch"}
 
 
 def evaluate(hook_input: dict[str, Any]) -> tuple[str, str, str] | None:
@@ -23,7 +23,7 @@ def evaluate(hook_input: dict[str, Any]) -> tuple[str, str, str] | None:
         return _evaluate_bash(tool_input, hook_input)
     elif tool_name == "Read":
         return _evaluate_read(tool_input)
-    elif tool_name in _AUTO_ALLOW_TOOLS:
+    elif tool_name in AUTO_ALLOW_TOOLS:
         return "allow", f"Auto-allowed tool: {tool_name}", "AUTO_ALLOW"
     else:
         # Unknown tool: passthrough

@@ -220,3 +220,45 @@ class TestLogSubcommand:
         # 0s means time.time() - 0 = now, so records just written should be before "now"
         # Actually records just written will have ts very close to now, may or may not match
         # This just tests that --since doesn't crash
+
+
+class TestRulesSubcommand:
+    def test_rules_default(self, capsys):
+        main(["rules"])
+        out = capsys.readouterr().out
+        assert "Deny rules (Bash):" in out
+        assert "Allow rules (Bash):" in out
+        assert "Auto-allow tools:" in out
+
+    def test_rules_kind_filter(self, capsys):
+        main(["rules", "--kind", "deny"])
+        out = capsys.readouterr().out
+        assert "Deny rules" in out
+        assert "Allow rules" not in out
+        assert "Ask rules" not in out
+        assert "Auto-allow tools:" not in out
+
+    def test_rules_type_filter(self, capsys):
+        main(["rules", "--type", "Read"])
+        out = capsys.readouterr().out
+        assert "Deny rules (Read):" in out
+        assert "(Bash):" not in out
+
+    def test_rules_json(self, capsys):
+        main(["rules", "--json"])
+        out = capsys.readouterr().out
+        lines = [l for l in out.strip().split("\n") if l]
+        assert len(lines) > 0
+        for line in lines:
+            rec = json.loads(line)
+            assert "kind" in rec
+            assert "type" in rec
+            assert rec["type"] in ("Bash", "Read", "tool")
+            assert "name" in rec
+
+    def test_rules_combined_filter(self, capsys):
+        main(["rules", "--kind", "deny", "--type", "Read"])
+        out = capsys.readouterr().out
+        assert "Deny rules (Read):" in out
+        assert "(Bash):" not in out
+        assert "Allow rules" not in out

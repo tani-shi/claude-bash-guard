@@ -152,6 +152,18 @@ Add `--explain` to print the decision reason to stderr:
 claude-sentinel --test "ls -la" --explain
 ```
 
+### List rules
+
+Display all loaded rules:
+
+```bash
+claude-sentinel rules                          # Show all rules
+claude-sentinel rules --kind deny              # Deny rules only
+claude-sentinel rules --type Read              # Read tool rules only
+claude-sentinel rules --kind deny --type Read  # Combined filter
+claude-sentinel rules --json                   # JSON Lines output
+```
+
 ### Hook management
 
 ```bash
