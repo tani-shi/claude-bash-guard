@@ -157,7 +157,7 @@ def _run_rules(args: argparse.Namespace) -> None:
             for tool in sorted(evaluator.AUTO_ALLOW_TOOLS):
                 print(json.dumps({"kind": "auto-allow", "type": "tool", "name": tool}))
         else:
-            print("Auto-allow tools:")
+            print("\nAuto-allow tools:")
             for tool in sorted(evaluator.AUTO_ALLOW_TOOLS):
                 print(f"  {tool}")
 

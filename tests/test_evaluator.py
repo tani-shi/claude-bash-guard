@@ -147,6 +147,56 @@ class TestAutoAllowTools:
         assert decision == "allow"
         assert stage == "AUTO_ALLOW"
 
+    @pytest.mark.parametrize(
+        "tool_name",
+        [
+            "mcp__claude_ai_Slack__slack_read_canvas",
+            "mcp__claude_ai_Slack__slack_read_channel",
+            "mcp__claude_ai_Slack__slack_read_thread",
+            "mcp__claude_ai_Slack__slack_read_user_profile",
+            "mcp__claude_ai_Slack__slack_search_channels",
+            "mcp__claude_ai_Slack__slack_search_public",
+            "mcp__claude_ai_Slack__slack_search_public_and_private",
+            "mcp__claude_ai_Slack__slack_search_users",
+        ],
+    )
+    def test_slack_mcp_read_search_allowed(self, tool_name):
+        hook_input = {
+            "tool_name": tool_name,
+            "tool_input": {"channel": "general"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "allow"
+        assert stage == "AUTO_ALLOW"
+
+    def test_slack_mcp_future_read_tool_allowed(self):
+        """New read/search tools matching the prefix are auto-allowed."""
+        hook_input = {
+            "tool_name": "mcp__claude_ai_Slack__slack_read_new_feature",
+            "tool_input": {},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "allow"
+        assert stage == "AUTO_ALLOW"
+
+    @pytest.mark.parametrize(
+        "tool_name",
+        [
+            "mcp__claude_ai_Slack__slack_send_message",
+            "mcp__claude_ai_Slack__slack_create_canvas",
+            "mcp__claude_ai_Slack__slack_update_canvas",
+            "mcp__claude_ai_Slack__slack_schedule_message",
+        ],
+    )
+    def test_slack_mcp_write_tools_not_auto_allowed(self, tool_name):
+        """Write/send tools must NOT be auto-allowed."""
+        hook_input = {
+            "tool_name": tool_name,
+            "tool_input": {},
+        }
+        result = evaluate(hook_input)
+        assert result is None
+
 
 class TestUnknownTool:
     def test_passthrough(self):

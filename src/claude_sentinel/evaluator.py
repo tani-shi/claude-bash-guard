@@ -2,12 +2,27 @@
 
 from __future__ import annotations
 
+from fnmatch import fnmatch
 from typing import Any
 
 from claude_sentinel import llm_judge, rule_engine as rules
 
-# Read-only tools with no side effects: auto-allow without evaluation
-AUTO_ALLOW_TOOLS = {"Grep", "Glob", "WebFetch", "WebSearch"}
+# Read-only tools with no side effects: auto-allow without evaluation.
+# Supports fnmatch glob patterns (e.g. "mcp__*__slack_read_*").
+AUTO_ALLOW_TOOLS = {
+    "Grep",
+    "Glob",
+    "Search",
+    "WebFetch",
+    "WebSearch",
+    "mcp__claude_ai_Slack__slack_read_*",
+    "mcp__claude_ai_Slack__slack_search_*",
+}
+
+
+def _is_auto_allowed(tool_name: str) -> bool:
+    """Check if a tool matches any AUTO_ALLOW_TOOLS entry (exact or glob)."""
+    return any(fnmatch(tool_name, pattern) for pattern in AUTO_ALLOW_TOOLS)
 
 
 def evaluate(hook_input: dict[str, Any]) -> tuple[str, str, str] | None:
@@ -23,7 +38,7 @@ def evaluate(hook_input: dict[str, Any]) -> tuple[str, str, str] | None:
         return _evaluate_bash(tool_input, hook_input)
     elif tool_name == "Read":
         return _evaluate_read(tool_input)
-    elif tool_name in AUTO_ALLOW_TOOLS:
+    elif _is_auto_allowed(tool_name):
         return "allow", f"Auto-allowed tool: {tool_name}", "AUTO_ALLOW"
     else:
         # Unknown tool: passthrough
