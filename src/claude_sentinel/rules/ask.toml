@@ -11,3 +11,27 @@ command_regex = '''^\s*systemctl\s+'''
 [[rules]]
 name = "crontab-edit"
 command_regex = '''^\s*crontab\s+(-e|-r)'''
+
+[[rules]]
+name = "deploy"
+command_regex = '''(?i)\bdeploy\b'''
+
+[[rules]]
+name = "make-deploy"
+command_regex = '''^\s*make\s+(deploy|tf[\w-]*|terraform-[\w-]*)(\s|$)'''
+
+[[rules]]
+name = "terraform"
+command_regex = '''^\s*terraform\s+(apply|destroy|import|state|taint|untaint|force-unlock)(\s|$)'''
+
+[[rules]]
+name = "pulumi"
+command_regex = '''^\s*pulumi\s+(up|destroy|import|cancel|refresh)(\s|$)'''
+
+[[rules]]
+name = "kubectl-mutate"
+command_regex = '''^\s*kubectl\s+(apply|delete|create|replace|patch|edit|rollout|scale|drain|cordon|uncordon|taint|untaint)(\s|$)'''
+
+[[rules]]
+name = "helm-mutate"
+command_regex = '''^\s*helm\s+(install|upgrade|uninstall|rollback)(\s|$)'''

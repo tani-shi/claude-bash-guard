@@ -308,6 +308,46 @@ class TestAskRules:
     def test_crontab_list_not_matched(self):
         assert match_ask("crontab -l") is None
 
+    def test_deploy(self):
+        assert match_ask("deploy") is not None
+        assert match_ask("npm run deploy") is not None
+        assert match_ask("./deploy.sh") is not None
+
+    def test_make_deploy(self):
+        assert match_ask("make deploy") is not None
+        assert match_ask("make tf-apply") is not None
+        assert match_ask("make terraform-plan") is not None
+
+    def test_make_build_not_asked(self):
+        assert match_ask("make build") is None
+        assert match_ask("make test") is None
+
+    def test_terraform_apply(self):
+        assert match_ask("terraform apply") is not None
+        assert match_ask("terraform destroy") is not None
+
+    def test_terraform_plan_not_asked(self):
+        assert match_ask("terraform plan") is None
+        assert match_ask("terraform validate") is None
+
+    def test_pulumi_up(self):
+        assert match_ask("pulumi up") is not None
+        assert match_ask("pulumi destroy") is not None
+
+    def test_kubectl_mutate(self):
+        assert match_ask("kubectl apply") is not None
+        assert match_ask("kubectl delete") is not None
+
+    def test_kubectl_get_not_asked(self):
+        assert match_ask("kubectl get pods") is None
+
+    def test_helm_mutate(self):
+        assert match_ask("helm install") is not None
+        assert match_ask("helm upgrade") is not None
+
+    def test_helm_list_not_asked(self):
+        assert match_ask("helm list") is None
+
     def test_safe_commands_not_asked(self):
         assert match_ask("ls -la") is None
         assert match_ask("git status") is None
