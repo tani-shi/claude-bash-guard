@@ -13,6 +13,7 @@ from typing import Any
 class Rule:
     name: str
     pattern: re.Pattern[str]
+    permission_globs: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -36,7 +37,11 @@ def _parse_rules(data: dict[str, Any]) -> RuleSet:
         )
     for entry in data.get("read_rules", []):
         ruleset.read_rules.append(
-            Rule(name=entry["name"], pattern=re.compile(entry["path_regex"]))
+            Rule(
+                name=entry["name"],
+                pattern=re.compile(entry["path_regex"]),
+                permission_globs=entry.get("permission_globs", []),
+            )
         )
     return ruleset
 
@@ -108,6 +113,14 @@ def match_read_deny(file_path: str) -> Rule | None:
         if rule.pattern.search(file_path):
             return rule
     return None
+
+
+def get_read_deny_permission_globs() -> list[str]:
+    """Collect all permission_globs from deny read_rules."""
+    globs = []
+    for rule in get_deny_rules().read_rules:
+        globs.extend(rule.permission_globs)
+    return globs
 
 
 def reset_cache() -> None:

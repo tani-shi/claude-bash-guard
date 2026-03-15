@@ -3,6 +3,7 @@
 import pytest
 
 from claude_sentinel.rule_engine import (
+    get_read_deny_permission_globs,
     load_rules,
     match_allow,
     match_ask,
@@ -548,3 +549,18 @@ class TestLoadRules:
     def test_load_ask(self):
         ruleset = load_rules(kind="ask")
         assert len(ruleset.command_rules) > 0
+
+
+class TestPermissionGlobs:
+    def test_read_rules_have_permission_globs(self):
+        ruleset = load_rules(kind="deny")
+        for rule in ruleset.read_rules:
+            assert len(rule.permission_globs) > 0, (
+                f"read_rule '{rule.name}' is missing permission_globs"
+            )
+
+    def test_get_read_deny_permission_globs(self):
+        globs = get_read_deny_permission_globs()
+        assert isinstance(globs, list)
+        assert len(globs) > 0
+        assert all(g.startswith("Read(") for g in globs)

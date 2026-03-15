@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 import time
+from pathlib import Path
 
 from claude_sentinel import evaluator, hook_io, installer, logger
 from claude_sentinel import rule_engine
@@ -28,9 +29,21 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     subparsers = parser.add_subparsers(dest="subcommand")
-    subparsers.add_parser("install", help="Install hooks into Claude Code settings")
-    subparsers.add_parser(
+    install_parser = subparsers.add_parser(
+        "install", help="Install hooks into Claude Code settings"
+    )
+    install_parser.add_argument(
+        "--path",
+        metavar="FILE",
+        help="Path to settings.json (default: ~/.claude/settings.json)",
+    )
+    uninstall_parser = subparsers.add_parser(
         "uninstall", help="Remove hooks from Claude Code settings"
+    )
+    uninstall_parser.add_argument(
+        "--path",
+        metavar="FILE",
+        help="Path to settings.json (default: ~/.claude/settings.json)",
     )
 
     # rules subcommand
@@ -84,12 +97,14 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     if args.subcommand == "install":
-        msg = installer.install()
+        settings_path = Path(args.path) if args.path else None
+        msg = installer.install(settings_path)
         print(msg)
         return
 
     if args.subcommand == "uninstall":
-        msg = installer.uninstall()
+        settings_path = Path(args.path) if args.path else None
+        msg = installer.uninstall(settings_path)
         print(msg)
         return
 

@@ -107,18 +107,23 @@ class TestTestMode:
 class TestSubcommands:
     def test_install(self, tmp_path, capsys):
         settings_file = tmp_path / "settings.json"
-        with patch("claude_sentinel.installer.SETTINGS_PATH", settings_file):
-            main(["install"])
+        main(["install", "--path", str(settings_file)])
         captured = capsys.readouterr()
         assert "installed" in captured.out
 
     def test_uninstall(self, tmp_path, capsys):
         settings_file = tmp_path / "settings.json"
-        with patch("claude_sentinel.installer.SETTINGS_PATH", settings_file):
-            main(["install"])
-            main(["uninstall"])
+        main(["install", "--path", str(settings_file)])
+        main(["uninstall", "--path", str(settings_file)])
         captured = capsys.readouterr()
         assert "removed" in captured.out
+
+    def test_install_with_path(self, tmp_path, capsys):
+        custom = tmp_path / "custom" / "settings.json"
+        main(["install", "--path", str(custom)])
+        captured = capsys.readouterr()
+        assert "installed" in captured.out
+        assert custom.exists()
 
 
 class TestLogSubcommand:

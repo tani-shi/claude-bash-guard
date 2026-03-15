@@ -4,7 +4,11 @@ import json
 
 import pytest
 
-from claude_sentinel.installer import install, uninstall
+from claude_sentinel.installer import (
+    _get_managed_permissions,
+    install,
+    uninstall,
+)
 
 
 @pytest.fixture
@@ -12,10 +16,17 @@ def settings_file(tmp_path):
     return tmp_path / "settings.json"
 
 
+@pytest.fixture
+def managed():
+    return _get_managed_permissions()
+
+
 class TestInstall:
     def test_install_fresh(self, settings_file):
         msg = install(settings_file)
-        assert "installed" in msg
+        assert "installed to" in msg
+        assert "hooks: installed" in msg
+        assert "rules added" in msg
 
         settings = json.loads(settings_file.read_text())
         assert "PermissionRequest" in settings["hooks"]
@@ -35,7 +46,8 @@ class TestInstall:
 
     def test_install_idempotent(self, settings_file):
         install(settings_file)
-        install(settings_file)
+        msg = install(settings_file)
+        assert "already up to date" in msg
 
         settings = json.loads(settings_file.read_text())
         assert len(settings["hooks"]["PermissionRequest"]) == 1
@@ -50,11 +62,88 @@ class TestInstall:
         assert backup_data["existing"] is True
 
 
+class TestInstallPermissions:
+    def test_install_adds_permissions_deny(self, settings_file, managed):
+        install(settings_file)
+        settings = json.loads(settings_file.read_text())
+        assert set(managed["deny"]).issubset(set(settings["permissions"]["deny"]))
+
+    def test_install_adds_permissions_allow(self, settings_file, managed):
+        install(settings_file)
+        settings = json.loads(settings_file.read_text())
+        assert set(managed["allow"]).issubset(set(settings["permissions"]["allow"]))
+
+    def test_install_adds_permissions_ask(self, settings_file, managed):
+        install(settings_file)
+        settings = json.loads(settings_file.read_text())
+        assert set(managed["ask"]).issubset(set(settings["permissions"]["ask"]))
+
+    def test_install_permissions_idempotent(self, settings_file, managed):
+        install(settings_file)
+        install(settings_file)
+        settings = json.loads(settings_file.read_text())
+        assert settings["permissions"]["deny"].count(managed["deny"][0]) == 1
+        assert settings["permissions"]["allow"].count(managed["allow"][0]) == 1
+        assert settings["permissions"]["ask"].count(managed["ask"][0]) == 1
+
+    def test_install_preserves_user_permissions(self, settings_file):
+        settings_file.write_text(
+            json.dumps(
+                {
+                    "permissions": {
+                        "deny": ["Bash(rm -rf /*)"],
+                        "allow": ["Read"],
+                        "ask": ["Write"],
+                    }
+                }
+            )
+        )
+        install(settings_file)
+        settings = json.loads(settings_file.read_text())
+        assert "Bash(rm -rf /*)" in settings["permissions"]["deny"]
+        assert "Read" in settings["permissions"]["allow"]
+        assert "Write" in settings["permissions"]["ask"]
+
+    def test_install_preserves_existing_hooks(self, settings_file):
+        settings_file.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "Notification": [
+                            {
+                                "matcher": "*",
+                                "hooks": [
+                                    {"type": "command", "command": "notify-send"}
+                                ],
+                            }
+                        ],
+                        "Stop": [
+                            {
+                                "matcher": "*",
+                                "hooks": [
+                                    {"type": "command", "command": "cleanup-script"}
+                                ],
+                            }
+                        ],
+                    }
+                }
+            )
+        )
+        install(settings_file)
+        settings = json.loads(settings_file.read_text())
+        assert "Notification" in settings["hooks"]
+        assert "Stop" in settings["hooks"]
+        assert settings["hooks"]["Notification"][0]["hooks"][0]["command"] == "notify-send"
+        assert settings["hooks"]["Stop"][0]["hooks"][0]["command"] == "cleanup-script"
+
+
 class TestUninstall:
     def test_uninstall(self, settings_file):
         install(settings_file)
         msg = uninstall(settings_file)
-        assert "removed" in msg
+        assert "removed from" in msg
+        assert "hooks: removed" in msg
+        assert "rules removed" in msg
 
         settings = json.loads(settings_file.read_text())
         assert "PermissionRequest" not in settings.get("hooks", {})
@@ -80,3 +169,44 @@ class TestUninstall:
         entries = result["hooks"]["PermissionRequest"]
         assert len(entries) == 1
         assert entries[0]["hooks"][0]["command"] == "other-hook"
+
+    def test_uninstall_removes_permissions(self, settings_file, managed):
+        install(settings_file)
+        uninstall(settings_file)
+
+        settings = json.loads(settings_file.read_text())
+        perms = settings.get("permissions", {})
+        for entry in managed["deny"]:
+            assert entry not in perms.get("deny", [])
+        for entry in managed["allow"]:
+            assert entry not in perms.get("allow", [])
+        for entry in managed["ask"]:
+            assert entry not in perms.get("ask", [])
+
+    def test_uninstall_preserves_user_permissions(self, settings_file):
+        settings_file.write_text(
+            json.dumps(
+                {
+                    "permissions": {
+                        "deny": ["Bash(rm -rf /*)"],
+                        "allow": ["Read"],
+                        "ask": ["Write"],
+                    }
+                }
+            )
+        )
+        install(settings_file)
+        msg = uninstall(settings_file)
+        assert "user rules preserved" in msg
+
+        settings = json.loads(settings_file.read_text())
+        assert "Bash(rm -rf /*)" in settings["permissions"]["deny"]
+        assert "Read" in settings["permissions"]["allow"]
+        assert "Write" in settings["permissions"]["ask"]
+
+    def test_uninstall_cleans_empty_permissions(self, settings_file):
+        install(settings_file)
+        uninstall(settings_file)
+
+        settings = json.loads(settings_file.read_text())
+        assert "permissions" not in settings

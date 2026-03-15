@@ -36,112 +36,138 @@ command_regex = '''(>|>>|tee\s+).*\.env(\s|$|\..*$)'''
 [[read_rules]]
 name = "env-files"
 path_regex = '''(^|/)\.env(\..+)?$'''
+permission_globs = ["Read(**/.env)", "Read(**/.env.*)"]
 
 [[read_rules]]
 name = "envrc"
 path_regex = '''(^|/)\.envrc$'''
+permission_globs = ["Read(**/.envrc)"]
 
 [[read_rules]]
 name = "secrets-files"
 path_regex = '''(^|/)secrets\.(yml|yaml|json|toml)$'''
+permission_globs = ["Read(**/secrets.yml)", "Read(**/secrets.yaml)", "Read(**/secrets.json)", "Read(**/secrets.toml)"]
 
 [[read_rules]]
 name = "terraform-vars"
 path_regex = '''(^|/)terraform\.tfvars(\.json)?$'''
+permission_globs = ["Read(**/terraform.tfvars)", "Read(**/terraform.tfvars.json)"]
 
 # B. SSH / crypto keys
 [[read_rules]]
 name = "ssh-dir"
 path_regex = '''(^|/)\.ssh/'''
+permission_globs = ["Read(~/.ssh/**)"]
 
 [[read_rules]]
 name = "gnupg-dir"
 path_regex = '''(^|/)\.gnupg/'''
+permission_globs = ["Read(~/.gnupg/**)"]
 
 [[read_rules]]
 name = "private-key-files"
 path_regex = '''(?<!\bpub)\.(pem|key)$'''
+permission_globs = ["Read(**/*.pem)", "Read(**/*.key)"]
 
 [[read_rules]]
 name = "keystore-files"
 path_regex = '''\.(p12|pfx|jks|keystore)$'''
+permission_globs = ["Read(**/*.p12)", "Read(**/*.pfx)", "Read(**/*.jks)", "Read(**/*.keystore)"]
 
 # C. Cloud provider credentials
 [[read_rules]]
 name = "aws-dir"
 path_regex = '''(^|/)\.aws/'''
+permission_globs = ["Read(~/.aws/**)"]
 
 [[read_rules]]
 name = "gcloud-dir"
 path_regex = '''(^|/)\.config/gcloud/'''
+permission_globs = ["Read(~/.config/gcloud/**)"]
 
 [[read_rules]]
 name = "azure-dir"
 path_regex = '''(^|/)\.azure/'''
+permission_globs = ["Read(~/.azure/**)"]
 
 [[read_rules]]
 name = "credentials-json"
 path_regex = '''(^|/)(credentials|client_secret|service[-_]account[^/]*)\.json$'''
+permission_globs = ["Read(**/credentials.json)", "Read(**/client_secret*.json)", "Read(**/service_account*.json)", "Read(**/service-account*.json)"]
 
 [[read_rules]]
 name = "terraform-rc"
 path_regex = '''(^|/)\.terraformrc$'''
+permission_globs = ["Read(~/.terraformrc)"]
 
 # D. Container / orchestration
 [[read_rules]]
 name = "docker-config"
 path_regex = '''(^|/)\.docker/config\.json$'''
+permission_globs = ["Read(~/.docker/config.json)"]
 
 [[read_rules]]
 name = "kube-config"
 path_regex = '''(^|/)\.kube/config$'''
+permission_globs = ["Read(~/.kube/config)"]
 
 # E. Package manager / dev tool auth
 [[read_rules]]
 name = "netrc"
 path_regex = '''(^|/)\.netrc$'''
+permission_globs = ["Read(~/.netrc)"]
 
 [[read_rules]]
 name = "npmrc"
 path_regex = '''(^|/)\.npmrc$'''
+permission_globs = ["Read(~/.npmrc)"]
 
 [[read_rules]]
 name = "pypirc"
 path_regex = '''(^|/)\.pypirc$'''
+permission_globs = ["Read(~/.pypirc)"]
 
 [[read_rules]]
 name = "gh-hosts"
 path_regex = '''(^|/)\.config/gh/hosts\.yml$'''
+permission_globs = ["Read(~/.config/gh/hosts.yml)"]
 
 [[read_rules]]
 name = "maven-settings"
 path_regex = '''(^|/)\.m2/settings\.xml$'''
+permission_globs = ["Read(~/.m2/settings.xml)"]
 
 [[read_rules]]
 name = "gradle-properties"
 path_regex = '''(^|/)\.gradle/gradle\.properties$'''
+permission_globs = ["Read(~/.gradle/gradle.properties)"]
 
 [[read_rules]]
 name = "boto-config"
 path_regex = '''(^|/)\.(boto|s3cfg)$'''
+permission_globs = ["Read(~/.boto)", "Read(~/.s3cfg)"]
 
 # F. Database
 [[read_rules]]
 name = "pgpass"
 path_regex = '''(^|/)\.pgpass$'''
+permission_globs = ["Read(~/.pgpass)"]
 
 [[read_rules]]
 name = "mycnf"
 path_regex = '''(^|/)\.my\.cnf$'''
+permission_globs = ["Read(~/.my.cnf)"]
 
 # G. Other
 [[read_rules]]
 name = "htpasswd"
 path_regex = '''(^|/)\.htpasswd$'''
+permission_globs = ["Read(~/.htpasswd)"]
 
 [[read_rules]]
 name = "vault-token"
 path_regex = '''(^|/)\.vault-token$'''
+permission_globs = ["Read(~/.vault-token)"]
 
 [[rules]]
 name = "gcloud-secrets-access"
