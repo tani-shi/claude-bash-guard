@@ -13,6 +13,7 @@ AUTO_ALLOW_TOOLS = {
     "Grep",
     "Glob",
     "Search",
+    "Skill",
     "WebFetch",
     "WebSearch",
     "mcp__claude_ai_Slack__slack_read_*",

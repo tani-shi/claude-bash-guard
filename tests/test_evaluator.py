@@ -138,6 +138,15 @@ class TestAutoAllowTools:
         assert decision == "allow"
         assert stage == "AUTO_ALLOW"
 
+    def test_skill_allowed(self):
+        hook_input = {
+            "tool_name": "Skill",
+            "tool_input": {"skill": "commit"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "allow"
+        assert stage == "AUTO_ALLOW"
+
     def test_websearch_allowed(self):
         hook_input = {
             "tool_name": "WebSearch",
