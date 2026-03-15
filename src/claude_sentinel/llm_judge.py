@@ -23,6 +23,8 @@ async def _evaluate_sdk(prompt: str) -> tuple[str, str]:
     options = ClaudeAgentOptions(
         model=_MODEL,
         max_turns=1,
+        permission_mode="bypassPermissions",
+        allowed_tools=[],
         env={"CLAUDECODE": "", "CLAUDE_CODE_ENTRYPOINT": ""},
     )
 
