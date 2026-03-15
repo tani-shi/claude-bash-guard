@@ -6,7 +6,8 @@ import asyncio
 from importlib import resources
 
 _MODEL = "claude-haiku-4-5-20251001"
-_SDK_TIMEOUT = 10.0
+_SDK_TIMEOUT = 30.0
+_MAX_RETRIES = 2
 
 
 def _load_prompt_template() -> str:
@@ -41,13 +42,15 @@ def evaluate(command: str, cwd: str) -> tuple[str, str]:
         (decision, reason) where decision is "allow", "deny", or "ask"
     """
     prompt = _load_prompt_template().format(command=command, cwd=cwd)
-
-    try:
-        return asyncio.run(_evaluate_sdk(prompt))
-    except TimeoutError:
-        return "ask", "LLM judge timed out"
-    except Exception as e:
-        return "ask", f"LLM judge error: {e}"
+    last_error = ""
+    for attempt in range(_MAX_RETRIES):
+        try:
+            return asyncio.run(_evaluate_sdk(prompt))
+        except TimeoutError:
+            last_error = "LLM judge timed out"
+        except Exception as e:
+            return "ask", f"LLM judge error: {e}"
+    return "ask", last_error
 
 
 def _parse_response(output: str) -> tuple[str, str]:

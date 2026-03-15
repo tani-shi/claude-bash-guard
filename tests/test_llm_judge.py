@@ -59,9 +59,21 @@ class TestEvaluateSDK:
         decision, reason = evaluate("some-command", "/tmp")
         assert decision == "ask"
         assert "timed out" in reason
+        assert mock_run.call_count == 2
+
+    @patch(
+        "claude_sentinel.llm_judge.asyncio.run",
+        side_effect=[TimeoutError("timed out"), ("allow", "Safe command")],
+    )
+    def test_sdk_timeout_then_success(self, mock_run):
+        decision, reason = evaluate("some-command", "/tmp")
+        assert decision == "allow"
+        assert reason == "Safe command"
+        assert mock_run.call_count == 2
 
     @patch("claude_sentinel.llm_judge.asyncio.run", side_effect=Exception("connection failed"))
     def test_sdk_error(self, mock_run):
         decision, reason = evaluate("some-command", "/tmp")
         assert decision == "ask"
         assert "connection failed" in reason
+        assert mock_run.call_count == 1
