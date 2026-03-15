@@ -73,7 +73,7 @@ command_regex = '''^\s*gh\s+release\s+(create|delete|edit|upload)(\s|$)'''
 
 [[rules]]
 name = "gh-repo-mutate"
-command_regex = '''^\s*gh\s+repo\s+(create|delete|fork|rename|archive)(\s|$)'''
+command_regex = '''^\s*gh\s+repo\s+(create|delete|fork|rename|archive|edit)(\s|$)'''
 
 [[rules]]
 name = "gh-api-mutate"
@@ -132,3 +132,22 @@ command_regex = '''^\s*firebase\s+(login|logout)(\s|$)'''
 [[rules]]
 name = "make-publish-release"
 command_regex = '''^\s*make\s+(publish|release|push)(\s|$)'''
+
+# --- macOS preferences mutation ---
+[[rules]]
+name = "defaults-write"
+command_regex = '''^\s*defaults\s+(write|import|delete)(\s|$)'''
+
+[[rules]]
+name = "plistbuddy-write"
+command_regex = '''^\s*/usr/libexec/PlistBuddy\s+-c\s+["']?(Set|Add|Delete|Merge|Import|Copy|Clear)'''
+
+# --- Homebrew mutation ---
+[[rules]]
+name = "brew-mutate"
+command_regex = '''^\s*brew\s+(install|uninstall|upgrade|reinstall|link|unlink|tap|untap|cleanup|autoremove|pin|unpin|services)(\s|$)'''
+
+# --- Claude CLI mutation ---
+[[rules]]
+name = "claude-plugins-mutate"
+command_regex = '''^\s*claude\s+plugins?\s+(update|install|uninstall|remove|add)(\s|$)'''

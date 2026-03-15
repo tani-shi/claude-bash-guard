@@ -36,7 +36,7 @@ command_regex = '''^\s*git\s+(status|log|diff|branch|show|rev-parse|remote)(\s|$
 
 [[rules]]
 name = "git-add-commit"
-command_regex = '''^\s*git\s+(add|commit|checkout|switch|stash|pull|fetch|rebase|merge|cherry-pick)(\s|$)'''
+command_regex = '''^\s*git\s+(add|commit|checkout|switch|stash|pull|fetch|rebase|merge|cherry-pick|reset)(\s|$)'''
 
 [[rules]]
 name = "git-push-safe"
@@ -221,3 +221,31 @@ command_regex = '''^\s*aws\s+\S+\s+(list|describe|get|show|wait)(-\w+)*(\s|$)'''
 [[rules]]
 name = "aws-sts-read"
 command_regex = '''^\s*aws\s+sts\s+get-caller-identity(\s|$)'''
+
+# --- macOS utilities ---
+[[rules]]
+name = "defaults-read"
+command_regex = '''^\s*defaults\s+(read|export|domains|find)(\s|$)'''
+
+[[rules]]
+name = "plistbuddy-read"
+command_regex = '''^\s*/usr/libexec/PlistBuddy\s+-c\s+["']?Print'''
+
+[[rules]]
+name = "strings"
+command_regex = '''^\s*strings\s+'''
+
+# --- Homebrew read ---
+[[rules]]
+name = "brew-read"
+command_regex = '''^\s*brew\s+(list|info|search|leaves|deps|uses|outdated|doctor|config|--version|home|cat|desc|log|tap-info|analytics)(\s|$)'''
+
+# --- Claude CLI read ---
+[[rules]]
+name = "claude-cli-read"
+command_regex = '''^\s*claude\s+(plugin\s+(list|marketplace)|plugins?\s+list|--version|version)(\s|$)'''
+
+# --- Media tools ---
+[[rules]]
+name = "ffmpeg"
+command_regex = '''^\s*ffmpeg\s+'''
