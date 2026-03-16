@@ -151,3 +151,8 @@ command_regex = '''^\s*brew\s+(install|uninstall|upgrade|reinstall|link|unlink|t
 [[rules]]
 name = "claude-plugins-mutate"
 command_regex = '''^\s*claude\s+plugins?\s+(update|install|uninstall|remove|add)(\s|$)'''
+
+# --- xai CLI config mutation ---
+[[rules]]
+name = "xai-config-write"
+command_regex = '''^\s*xai\s+config\s+(init|set)(\s|$)'''

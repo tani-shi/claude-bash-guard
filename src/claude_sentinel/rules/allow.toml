@@ -249,3 +249,12 @@ command_regex = '''^\s*claude\s+(plugin\s+(list|marketplace)|plugins?\s+list|--v
 [[rules]]
 name = "ffmpeg"
 command_regex = '''^\s*ffmpeg\s+'''
+
+# --- xai CLI read ---
+[[rules]]
+name = "xai-read"
+command_regex = '''^\s*xai\s+(search|user|thread|trending|web|models)(\s|$)'''
+
+[[rules]]
+name = "xai-config-read"
+command_regex = '''^\s*xai\s+config\s+(get|list)(\s|$)'''
