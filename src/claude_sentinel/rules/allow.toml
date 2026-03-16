@@ -258,3 +258,18 @@ command_regex = '''^\s*xai\s+(search|user|thread|trending|web|models)(\s|$)'''
 [[rules]]
 name = "xai-config-read"
 command_regex = '''^\s*xai\s+config\s+(get|list)(\s|$)'''
+
+# --- Shell plugin manager ---
+[[rules]]
+name = "sheldon"
+command_regex = '''^\s*sheldon\s+(source|list|version|completions|init)(\s|$)'''
+
+# --- macOS default app manager (read) ---
+[[rules]]
+name = "duti-read"
+command_regex = '''^\s*duti\s+(-x|-d|-l|--version)(\s|$)'''
+
+# --- claude-sentinel CLI (read) ---
+[[rules]]
+name = "claude-sentinel-read"
+command_regex = '''^\s*claude-sentinel\s+(log|test|rules|version)(\s|$)'''

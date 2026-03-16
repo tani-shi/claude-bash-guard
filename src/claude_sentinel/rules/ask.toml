@@ -181,3 +181,13 @@ command_regex = '''^\s*fam\s+schedule\s+(enable|disable)(\s|$)'''
 [[rules]]
 name = "fam-service-mutate"
 command_regex = '''^\s*fam\s+service\s+(add|remove)(\s|$)'''
+
+# --- macOS default app manager (write) ---
+[[rules]]
+name = "duti-write"
+command_regex = '''^\s*duti\s+(-s\s|[^-])'''
+
+# --- claude-sentinel CLI (mutate) ---
+[[rules]]
+name = "claude-sentinel-mutate"
+command_regex = '''^\s*claude-sentinel\s+(install|uninstall)(\s|$)'''
