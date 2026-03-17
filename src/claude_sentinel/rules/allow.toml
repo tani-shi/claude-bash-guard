@@ -51,12 +51,20 @@ name = "date-uname"
 command_regex = '''^\s*(date|uname|whoami|hostname|id)\s*'''
 
 [[rules]]
-name = "python-uv-safe"
-command_regex = '''^\s*(python3?|uv)\s+(?!publish(\s|$))'''
+name = "python-run"
+command_regex = '''^\s*python3?\s+'''
 
 [[rules]]
-name = "node-runtime"
-command_regex = '''^\s*(node|npx|pnpx|bun)\s+'''
+name = "uv-safe"
+command_regex = '''^\s*uv\s+(run|sync|lock|tree|pip\s+(list|show|check|freeze)|tool\s+run|version|self\s+version|venv|init|build|export)(\s|$)'''
+
+[[rules]]
+name = "node-run"
+command_regex = '''^\s*node\s+'''
+
+[[rules]]
+name = "bun-safe"
+command_regex = '''^\s*bun\s+(run|test|build|install|add|remove|update|init|create|pm|x)(\s|$)'''
 
 [[rules]]
 name = "npm-safe"
@@ -64,23 +72,27 @@ command_regex = '''^\s*(npm|yarn|pnpm)\s+(install|ci|test|start|build|clean|lint
 
 [[rules]]
 name = "npm-run-safe"
-command_regex = '''^\s*(npm|yarn|pnpm)\s+run\s+(?!deploy|publish|release|push)'''
+command_regex = '''^\s*(npm|yarn|pnpm)\s+run\s+(test|lint|build|dev|start|check|format|clean|docs|typecheck|type-check|analyze|watch|serve|preview|generate|codegen|prepare|preinstall|postinstall|prebuild|postbuild)(\s|$)'''
 
 [[rules]]
-name = "rustc-rustup"
-command_regex = '''^\s*(rustc|rustup)\s+'''
+name = "rustc"
+command_regex = '''^\s*rustc\s+'''
+
+[[rules]]
+name = "rustup-read"
+command_regex = '''^\s*rustup\s+(show|which|doc|completions|check|--version)(\s|$)'''
 
 [[rules]]
 name = "cargo-safe"
-command_regex = '''^\s*cargo\s+(build|check|test|run|bench|clean|doc|new|init|add|remove|update|search|install|uninstall|fmt|clippy|fix|tree|metadata|verify-project|generate-lockfile|fetch|package|vendor|report|help|version)(\s|$)'''
+command_regex = '''^\s*cargo\s+(build|check|test|run|bench|clean|doc|new|init|fmt|clippy|fix|tree|metadata|verify-project|generate-lockfile|fetch|package|vendor|report|help|version)(\s|$)'''
 
 [[rules]]
 name = "go"
-command_regex = '''^\s*go\s+(build|run|test|mod|fmt|vet|generate)(\s|$)'''
+command_regex = '''^\s*go\s+(build|run|test|mod|fmt|vet)(\s|$)'''
 
 [[rules]]
 name = "make-safe"
-command_regex = '''^\s*make(\s*$|\s+(?!deploy|publish|release|push\b|tf[\w-]*\b|terraform-[\w-]*\b))'''
+command_regex = '''^\s*make(\s*$|\s+(all|build|test|check|lint|clean|install|fmt|format|docs|run|dev|debug|help)(\s|$))'''
 
 [[rules]]
 name = "mkdir"
@@ -112,11 +124,15 @@ command_regex = '''^\s*diff\s+'''
 
 [[rules]]
 name = "curl-wget-get"
-command_regex = '''^\s*(curl|wget)\s+(?!.*\|\s*(bash|sh|zsh))(?!.*(-X|--request)\s+(POST|PUT|DELETE|PATCH))(?!.*(-d\s|--data))'''
+command_regex = '''^\s*(curl|wget)\s+(?!.*\|\s*(bash|sh|zsh))(?!.*(-X|--request)\s+(POST|PUT|DELETE|PATCH))(?!.*(-d\s|--data|--form|-F\s|--upload-file|-T\s))'''
 
 [[rules]]
-name = "docker-safe"
-command_regex = '''^\s*docker\s+(build|images|ps|logs|inspect|exec|run|stop|start|restart|rm|rmi|pull|tag|network|volume|compose|system|info|version|context|container|image|buildx|manifest|stats|top|port|cp|rename|wait|pause|unpause|attach|diff|history|save|load|export|import|events|login|logout)(\s|$)'''
+name = "docker-read"
+command_regex = '''^\s*docker\s+(images|ps|logs|inspect|info|version|stats|top|port|diff|history|events|context\s+(ls|list|show|inspect))(\s|$)'''
+
+[[rules]]
+name = "docker-local"
+command_regex = '''^\s*docker\s+(build|pull|tag|stop|start|restart|rm|rmi|pause|unpause|wait|rename|save|load|export|import|network|volume|system|container|image|buildx|manifest|compose)(\s|$)'''
 
 [[rules]]
 name = "test-bracket"

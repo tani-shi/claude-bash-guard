@@ -14,7 +14,7 @@ command_regex = '''^\s*crontab\s+(-e|-r)'''
 
 [[rules]]
 name = "deploy"
-command_regex = '''(?i)\bdeploy\b'''
+command_regex = '''^\s*(\S+\s+)*deploy(\s|$)'''
 
 [[rules]]
 name = "make-deploy"
@@ -42,20 +42,42 @@ name = "npm-publish"
 command_regex = '''^\s*(npm|yarn|pnpm)\s+publish(\s|$)'''
 
 [[rules]]
-name = "cargo-publish"
-command_regex = '''^\s*cargo\s+publish(\s|$)'''
-
-[[rules]]
-name = "uv-publish"
-command_regex = '''^\s*uv\s+publish(\s|$)'''
-
-[[rules]]
 name = "gem-push"
 command_regex = '''^\s*gem\s+push(\s|$)'''
 
 [[rules]]
 name = "twine-upload"
 command_regex = '''^\s*twine\s+upload(\s|$)'''
+
+# --- npx/pnpx/bunx execution (downloads & runs packages) ---
+[[rules]]
+name = "npx-execute"
+command_regex = '''^\s*(npx|pnpx|bunx)\s+'''
+
+# --- uv mutation operations ---
+[[rules]]
+name = "uv-mutate"
+command_regex = '''^\s*uv\s+(pip\s+install|pip\s+uninstall|add|remove|tool\s+install|tool\s+uninstall|self\s+update|publish)(\s|$)'''
+
+# --- rustup mutation operations ---
+[[rules]]
+name = "rustup-mutate"
+command_regex = '''^\s*rustup\s+(update|self|install|uninstall|default|override|component|target|toolchain|run)(\s|$)'''
+
+# --- cargo mutation operations ---
+[[rules]]
+name = "cargo-mutate"
+command_regex = '''^\s*cargo\s+(install|uninstall|add|remove|update|search|publish)(\s|$)'''
+
+# --- docker exec/run (arbitrary command execution) ---
+[[rules]]
+name = "docker-exec-run"
+command_regex = '''^\s*docker\s+(exec|run|cp|login|logout|attach)(\s|$)'''
+
+# --- go generate (runs arbitrary commands via //go:generate) ---
+[[rules]]
+name = "go-generate"
+command_regex = '''^\s*go\s+generate(\s|$)'''
 
 # --- Container registry push ---
 [[rules]]
