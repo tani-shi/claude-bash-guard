@@ -18,6 +18,7 @@ AUTO_ALLOW_TOOLS = {
     "WebSearch",
     "mcp__claude_ai_Slack__slack_read_*",
     "mcp__claude_ai_Slack__slack_search_*",
+    "mcp__plugin_context7_context7__*",
 }
 
 # Tools that have external impact and require user confirmation.
