@@ -32,15 +32,23 @@ command_regex = '''^\s*(grep|rg|ag)\s+'''
 
 [[rules]]
 name = "git-status"
-command_regex = '''^\s*git\s+(status|log|diff|branch|show|rev-parse|remote)(\s|$)'''
+command_regex = '''^\s*git\s+(-C\s+\S+\s+)?(status|log|diff|branch|show|rev-parse|remote)(\s|$)'''
 
 [[rules]]
 name = "git-add-commit"
-command_regex = '''^\s*git\s+(add|commit|checkout|switch|stash|pull|fetch|rebase|merge|cherry-pick|reset)(\s|$)'''
+command_regex = '''^\s*git\s+(-C\s+\S+\s+)?(add|commit|checkout|switch|stash|pull|fetch|rebase|merge|cherry-pick|reset|restore)(\s|$)'''
 
 [[rules]]
 name = "git-push-safe"
-command_regex = '''^\s*git\s+push(\s+--force-with-lease|\s+origin|\s+-u|\s+--set-upstream|\s*$)'''
+command_regex = '''^\s*git\s+(-C\s+\S+\s+)?push(\s+--force-with-lease|\s+origin|\s+-u|\s+--set-upstream|\s*$)'''
+
+[[rules]]
+name = "git-read-extra"
+command_regex = '''^\s*git\s+(-C\s+\S+\s+)?(submodule|ls-files|ls-tree|ls-remote|describe|name-rev|shortlog|blame|grep|tag|reflog|config\s+(--get|--list|list))(\s|$)'''
+
+[[rules]]
+name = "git-version"
+command_regex = '''^\s*git\s+--version\s*$'''
 
 [[rules]]
 name = "which-type"
@@ -92,7 +100,7 @@ command_regex = '''^\s*go\s+(build|run|test|mod|fmt|vet)(\s|$)'''
 
 [[rules]]
 name = "make-safe"
-command_regex = '''^\s*make(\s*$|\s+(all|build|test|check|lint|clean|install|fmt|format|docs|run|dev|debug|help)(\s|$))'''
+command_regex = '''^\s*make(\s*$|\s+(all|build|test|check|lint|clean|install|fmt|format|docs|run|dev|debug|help|validate|diff[\w-]*)(\s|$))'''
 
 [[rules]]
 name = "mkdir"
@@ -259,7 +267,7 @@ command_regex = '''^\s*brew\s+(list|info|search|leaves|deps|uses|outdated|doctor
 # --- Claude CLI read ---
 [[rules]]
 name = "claude-cli-read"
-command_regex = '''^\s*claude\s+(plugin\s+(list|marketplace)|plugins?\s+list|--version|version)(\s|$)'''
+command_regex = '''^\s*claude\s+(plugin\s+(list|marketplace)|plugins?\s+list|--version|version|sessions?\s+(list|show)|config\s+(list|get))(\s|$)'''
 
 # --- Media tools ---
 [[rules]]
@@ -289,3 +297,43 @@ command_regex = '''^\s*duti\s+(-x|-d|-l|--version)(\s|$)'''
 [[rules]]
 name = "claude-sentinel-read"
 command_regex = '''^\s*claude-sentinel\s+(log|test|rules|version)(\s|$)'''
+
+# --- Terraform read ---
+[[rules]]
+name = "terraform-read"
+command_regex = '''^\s*terraform\s+(validate|plan|fmt|init|output|show|state\s+(list|show)|workspace\s+(list|show|select)|providers|version|graph)(\s|$)'''
+
+# --- docker-compose (hyphenated) ---
+[[rules]]
+name = "docker-compose"
+command_regex = '''^\s*docker-compose\s+(ps|logs|config|images|events|top|version|up|down|build|pull|start|stop|restart|exec|run)(\s|$)'''
+
+# --- macOS utilities ---
+[[rules]]
+name = "open"
+command_regex = '''^\s*open\s+'''
+
+[[rules]]
+name = "file-cmd"
+command_regex = '''^\s*file\s+'''
+
+[[rules]]
+name = "pbcopy-paste"
+command_regex = '''^\s*(pbcopy|pbpaste)\s*'''
+
+[[rules]]
+name = "uuidgen"
+command_regex = '''^\s*uuidgen\s*'''
+
+[[rules]]
+name = "sleep"
+command_regex = '''^\s*sleep\s+'''
+
+[[rules]]
+name = "osascript"
+command_regex = '''^\s*osascript\s+'''
+
+# --- Mermaid CLI ---
+[[rules]]
+name = "mmdc"
+command_regex = '''^\s*mmdc\s+'''

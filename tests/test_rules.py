@@ -235,6 +235,75 @@ class TestAllowRules:
         assert match_allow("firebase firestore:delete /users") is None
         assert match_allow("firebase deploy") is None
 
+    def test_git_c_flag(self):
+        assert match_allow("git -C /tmp/repo status") is not None
+        assert match_allow("git -C /tmp/repo log --oneline") is not None
+        assert match_allow("git -C /tmp/repo diff HEAD") is not None
+        assert match_allow("git -C /tmp/repo add .") is not None
+        assert match_allow("git -C /tmp/repo commit -m 'msg'") is not None
+        assert match_allow("git -C /tmp/repo push origin main") is not None
+        assert match_allow("git -C /tmp/repo restore file.txt") is not None
+
+    def test_git_read_extra(self):
+        assert match_allow("git submodule status") is not None
+        assert match_allow("git ls-files") is not None
+        assert match_allow("git -C /tmp/repo ls-files") is not None
+        assert match_allow("git blame file.txt") is not None
+        assert match_allow("git tag -l") is not None
+        assert match_allow("git describe --tags") is not None
+        assert match_allow("git reflog") is not None
+
+    def test_git_version(self):
+        assert match_allow("git --version") is not None
+
+    def test_make_diff_validate(self):
+        assert match_allow("make diff-config") is not None
+        assert match_allow("make validate") is not None
+        assert match_allow("make diff") is not None
+
+    def test_open(self):
+        assert match_allow("open /tmp/file.txt") is not None
+        assert match_allow("open .") is not None
+
+    def test_file_cmd(self):
+        assert match_allow("file /tmp/test.bin") is not None
+
+    def test_pbcopy_paste(self):
+        assert match_allow("pbpaste") is not None
+        assert match_allow("pbcopy") is not None
+
+    def test_uuidgen(self):
+        assert match_allow("uuidgen") is not None
+
+    def test_sleep(self):
+        assert match_allow("sleep 5") is not None
+
+    def test_terraform_read(self):
+        assert match_allow("terraform validate") is not None
+        assert match_allow("terraform plan") is not None
+        assert match_allow("terraform fmt") is not None
+        assert match_allow("terraform init") is not None
+        assert match_allow("terraform output") is not None
+        assert match_allow("terraform version") is not None
+
+    def test_terraform_not_allowed(self):
+        assert match_allow("terraform apply") is None
+        assert match_allow("terraform destroy") is None
+
+    def test_docker_compose_hyphen(self):
+        assert match_allow("docker-compose ps") is not None
+        assert match_allow("docker-compose up") is not None
+        assert match_allow("docker-compose logs") is not None
+
+    def test_osascript(self):
+        assert match_allow("osascript -e 'tell application \"Finder\"'") is not None
+
+    def test_mmdc(self):
+        assert match_allow("mmdc -i diagram.mmd -o output.svg") is not None
+
+    def test_claude_sessions(self):
+        assert match_allow("claude sessions list") is not None
+
 
 class TestReadDenyRules:
     # A. Environment / config files
@@ -529,6 +598,13 @@ class TestAskRules:
         assert match_ask("firebase serve") is None
         assert match_ask("firebase projects:list") is None
         assert match_ask("firebase functions:log") is None
+
+    def test_make_sync(self):
+        assert match_ask("make sync-config") is not None
+        assert match_ask("make sync") is not None
+
+    def test_make_diff_not_asked(self):
+        assert match_ask("make diff-config") is None
 
     def test_safe_commands_not_asked(self):
         assert match_ask("ls -la") is None

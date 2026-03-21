@@ -21,6 +21,10 @@ name = "make-deploy"
 command_regex = '''^\s*make\s+(deploy|tf[\w-]*|terraform-[\w-]*)(\s|$)'''
 
 [[rules]]
+name = "make-sync"
+command_regex = '''^\s*make\s+sync[\w-]*(\s|$)'''
+
+[[rules]]
 name = "terraform"
 command_regex = '''^\s*terraform\s+(apply|destroy|import|state|taint|untaint|force-unlock)(\s|$)'''
 
