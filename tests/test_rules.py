@@ -171,6 +171,15 @@ class TestAllowRules:
         assert match_allow("curl -d '{}' https://api.example.com") is None
         assert match_allow("curl --data '{}' https://api.example.com") is None
 
+    def test_gcloud_read(self):
+        assert match_allow("gcloud logging read 'severity>=ERROR' --limit 10") is not None
+        assert match_allow("gcloud logging tail 'resource.type=cloud_run_revision'") is not None
+        assert match_allow("gcloud logging logs list") is not None
+        assert match_allow("gcloud logging sinks describe my-sink") is not None
+        assert match_allow("gcloud logging metrics list") is not None
+        assert match_allow("gcloud compute instances list") is not None
+        assert match_allow("gcloud run services describe my-svc") is not None
+
     def test_aws_read(self):
         assert match_allow("aws s3 list-buckets") is not None
         assert match_allow("aws ec2 describe-instances --region us-east-1") is not None

@@ -216,7 +216,7 @@ command_regex = '''^\s*gcloud\s+(version|info|help|cheat-sheet|feedback|survey)(
 
 [[rules]]
 name = "gcloud-read"
-command_regex = '''^\s*gcloud\s+.*\s+(list|describe|get-iam-policy|search|lookup|diagnose|metrics|wait|validate|notices)(\s|$)'''
+command_regex = '''^\s*gcloud\s+.*\s+(list|describe|get-iam-policy|search|lookup|diagnose|metrics|wait|validate|notices|read|tail)(\s|$)'''
 
 [[rules]]
 name = "gcloud-read-compound"
