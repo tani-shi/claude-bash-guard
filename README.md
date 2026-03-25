@@ -115,9 +115,9 @@ Additionally, file tools are added to `permissions.allow` and evaluated by the h
 Common development commands are auto-approved, including:
 
 - File operations: `ls`, `cat`, `head`, `tail`, `find`, `grep`, `cp`, `mv`, `mkdir`, `touch`, `rm`, `trash`
-- Git: `status`, `log`, `diff`, `add`, `commit`, `push` (with `--force-with-lease`), etc.
-- Build tools: `make` (excludes `deploy`/`publish`/`release`/`push`/`tf-*`/`terraform-*` targets), `cargo` (safe subcommands only), `go build`, `node`/`npx`/`bun`, `python`, `uv` (excludes `publish`)
-- Package managers: `npm`/`yarn`/`pnpm` (safe subcommands only, excludes `publish`; `run` excludes `deploy`/`publish`/`release`/`push`)
+- Git: `status`, `log`, `diff`, `add`, `commit`, `revert`, `push` (with `--force-with-lease`), etc.
+- Build tools: `make` (safe targets with hyphenated variants like `build-*`, `type-*`, `generate-*`; excludes `deploy`/`publish`/`release`/`push`/`tf-*`/`terraform-*`), `cargo` (safe subcommands only), `go build`, `node`/`npx`/`bun`, `python`, `uv` (excludes `publish`)
+- Package managers: `npm`/`yarn`/`pnpm` (safe subcommands only, excludes `publish`; `run` allows `test`/`build`/`lint`/`cli`/etc., excludes `deploy`/`publish`/`release`/`push`)
 - Containers: `docker` (safe subcommands only, excludes `push`)
 - Network: `curl`/`wget` (excludes pipe-to-shell, POST/PUT/DELETE/PATCH methods, and `--data` flags)
 - Cloud: `aws` read operations (`list`, `describe`, `get`, `show`, `wait`), `gcloud` read operations
@@ -146,6 +146,7 @@ Commands that prompt user confirmation without LLM evaluation:
 - `curl`/`wget` with `-X POST/PUT/DELETE/PATCH` or `--data` flags — HTTP mutations
 - `gcloud ... create/delete/deploy/update` etc. — Google Cloud mutations
 - `aws ...` — AWS CLI (catch-all; read ops are allowed by ALLOW rules)
+- `npm run`/`yarn run`/`pnpm run` with `migrate`/`migration` — database migrations
 - `make publish` / `release` / `push` — external-impact make targets
 - Slack send/schedule/canvas tools (TOOL_ASK)
 

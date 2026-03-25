@@ -213,6 +213,11 @@ command_regex = '''^\s*fam\s+service\s+(add|remove)(\s|$)'''
 name = "duti-write"
 command_regex = '''^\s*duti\s+(-s\s|[^-])'''
 
+# --- npm/yarn/pnpm DB migration ---
+[[rules]]
+name = "npm-run-migrate"
+command_regex = '''^\s*(npm|yarn|pnpm)\s+run\s+.*migrat(e|ion)'''
+
 # --- claude-sentinel CLI (mutate) ---
 [[rules]]
 name = "claude-sentinel-mutate"

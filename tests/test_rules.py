@@ -78,6 +78,11 @@ class TestAllowRules:
         assert match_allow("git add .") is not None
         assert match_allow("git commit -m 'test'") is not None
 
+    def test_git_revert(self):
+        assert match_allow("git revert HEAD") is not None
+        assert match_allow("git revert HEAD --no-edit") is not None
+        assert match_allow("git revert abc123") is not None
+
     def test_python(self):
         assert match_allow("python3 script.py") is not None
         assert match_allow("uv run pytest") is not None
@@ -91,6 +96,7 @@ class TestAllowRules:
         assert match_allow("pnpm build") is not None
         assert match_allow("npx prettier --check .") is not None
         assert match_allow("bun run test") is not None
+        assert match_allow("npm run cli find-unused-locales") is not None
 
     def test_node_not_allowed(self):
         assert match_allow("npm publish") is None
@@ -105,6 +111,16 @@ class TestAllowRules:
         assert match_allow("make build") is not None
         assert match_allow("make") is not None
         assert match_allow("make test") is not None
+
+    def test_make_hyphenated_targets(self):
+        assert match_allow("make type-check") is not None
+        assert match_allow("make type-check 2>&1") is not None
+        assert match_allow("make build-chat") is not None
+        assert match_allow("make build-dd") is not None
+        assert match_allow("make prisma-generate") is not None
+        assert match_allow("make typecheck") is not None
+        assert match_allow("make generate-types") is not None
+        assert match_allow("make codegen") is not None
 
     def test_make_not_allowed(self):
         assert match_allow("make deploy") is None
@@ -597,6 +613,12 @@ class TestAskRules:
         assert match_ask("firebase serve") is None
         assert match_ask("firebase projects:list") is None
         assert match_ask("firebase functions:log") is None
+
+    def test_npm_run_migrate(self):
+        assert match_ask("npm run prisma:migrate") is not None
+        assert match_ask("npm run prisma:migrate -- --name add_table") is not None
+        assert match_ask("yarn run migrate") is not None
+        assert match_ask("pnpm run db:migration") is not None
 
     def test_make_sync(self):
         assert match_ask("make sync-config") is not None

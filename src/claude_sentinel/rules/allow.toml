@@ -36,7 +36,7 @@ command_regex = '''^\s*git\s+(-C\s+\S+\s+)?(status|log|diff|branch|show|rev-pars
 
 [[rules]]
 name = "git-add-commit"
-command_regex = '''^\s*git\s+(-C\s+\S+\s+)?(add|commit|checkout|switch|stash|pull|fetch|rebase|merge|cherry-pick|reset|restore)(\s|$)'''
+command_regex = '''^\s*git\s+(-C\s+\S+\s+)?(add|commit|checkout|switch|stash|pull|fetch|rebase|merge|cherry-pick|reset|restore|revert)(\s|$)'''
 
 [[rules]]
 name = "git-push-safe"
@@ -80,7 +80,7 @@ command_regex = '''^\s*(npm|yarn|pnpm)\s+(install|ci|test|start|build|clean|lint
 
 [[rules]]
 name = "npm-run-safe"
-command_regex = '''^\s*(npm|yarn|pnpm)\s+run\s+(test|lint|build|dev|start|check|format|clean|docs|typecheck|type-check|analyze|watch|serve|preview|generate|codegen|prepare|preinstall|postinstall|prebuild|postbuild)(\s|$)'''
+command_regex = '''^\s*(npm|yarn|pnpm)\s+run\s+(test|lint|build|dev|start|check|format|clean|docs|typecheck|type-check|analyze|watch|serve|preview|generate|codegen|prepare|preinstall|postinstall|prebuild|postbuild|cli)(\s|$)'''
 
 [[rules]]
 name = "rustc"
@@ -100,7 +100,7 @@ command_regex = '''^\s*go\s+(build|run|test|mod|fmt|vet)(\s|$)'''
 
 [[rules]]
 name = "make-safe"
-command_regex = '''^\s*make(\s*$|\s+(all|build|test|check|lint|clean|install|fmt|format|docs|run|dev|debug|help|validate|diff[\w-]*)(\s|$))'''
+command_regex = '''^\s*make(\s*$|\s+(all|build|test|check|lint|clean|install|fmt|format|docs|run|dev|debug|help|validate|type|generate|prisma|codegen|typecheck|diff)[\w-]*(\s|$))'''
 
 [[rules]]
 name = "mkdir"
