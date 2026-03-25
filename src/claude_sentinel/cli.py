@@ -271,8 +271,6 @@ def _run_log(args: argparse.Namespace) -> None:
 
 def _follow_log(args: argparse.Namespace) -> None:
     """Follow the log file in real-time."""
-    import select
-
     log_path = logger.get_log_dir() / logger.LOG_FILENAME
     try:
         log_path.parent.mkdir(parents=True, exist_ok=True)
