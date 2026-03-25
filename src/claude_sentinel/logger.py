@@ -4,11 +4,22 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
-DEFAULT_LOG_DIR = Path.home() / ".local" / "share" / "claude-sentinel" / "logs"
+
+def _default_log_dir() -> Path:
+    """Return platform-appropriate default log directory."""
+    if sys.platform == "win32":
+        local = os.environ.get("LOCALAPPDATA")
+        if local:
+            return Path(local) / "claude-sentinel" / "logs"
+    return Path.home() / ".local" / "share" / "claude-sentinel" / "logs"
+
+
+DEFAULT_LOG_DIR = _default_log_dir()
 LOG_FILENAME = "eval.jsonl"
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 MAX_FILES = 5

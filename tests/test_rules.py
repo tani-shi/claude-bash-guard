@@ -444,6 +444,16 @@ class TestSensitivePathRules:
     def test_vault_token(self):
         assert match_sensitive_path("/home/user/.vault-token") is not None
 
+    # Windows-style paths
+    def test_windows_paths(self):
+        assert match_sensitive_path(r"C:\Users\user\.env") is not None
+        assert match_sensitive_path(r"C:\Users\user\.env.local") is not None
+        assert match_sensitive_path(r"C:\Users\user\.ssh\id_rsa") is not None
+        assert match_sensitive_path(r"C:\Users\user\.aws\credentials") is not None
+        assert match_sensitive_path(r"C:\Users\user\.docker\config.json") is not None
+        assert match_sensitive_path(r"C:\Users\user\.kube\config") is not None
+        assert match_sensitive_path(r"C:\Users\user\project\README.md") is None
+
     # False positives: these should NOT match
     def test_non_env_files(self):
         assert match_sensitive_path("README.md") is None

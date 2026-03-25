@@ -239,3 +239,11 @@ uv run claude-sentinel --test "your-command-here"
 ```
 
 Requires Python 3.11+ (uses `tomllib` from the standard library). Zero external runtime dependencies.
+
+## Platform support
+
+Works on macOS, Linux, and Windows.
+
+- **Sensitive path rules** match both Unix (`/`) and Windows (`\`) path separators
+- **Logs** are stored in `~/.local/share/claude-sentinel/logs/` on Unix, `%LOCALAPPDATA%\claude-sentinel\logs\` on Windows (override with `CLAUDE_SENTINEL_LOG_DIR`)
+- **Settings** are read from `~/.claude/settings.json` on all platforms

@@ -104,8 +104,9 @@ def match_ask(command: str) -> Rule | None:
 
 def match_sensitive_path(file_path: str) -> Rule | None:
     """Check if file path matches any sensitive path deny rule."""
+    normalized = file_path.replace("\\", "/")
     for rule in get_deny_rules().sensitive_path_rules:
-        if rule.pattern.search(file_path):
+        if rule.pattern.search(normalized):
             return rule
     return None
 

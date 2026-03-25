@@ -194,7 +194,7 @@ def _remove_permissions(settings: dict, key: str, entries: list[str]) -> int:
 def _load_settings(path: Path) -> dict:
     """Load settings from JSON file."""
     if path.exists():
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)
     return {}
 
@@ -202,6 +202,6 @@ def _load_settings(path: Path) -> dict:
 def _save_settings(path: Path, settings: dict) -> None:
     """Save settings to JSON file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(settings, f, indent=2)
         f.write("\n")

@@ -163,6 +163,34 @@ class TestFileToolEvaluation:
         assert decision == "allow"
 
 
+class TestFileToolWindows:
+    def test_read_deny_env_file_windows(self):
+        hook_input = {
+            "tool_name": "Read",
+            "tool_input": {"file_path": r"C:\Users\user\project\.env"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "deny"
+        assert stage == "RULE_DENY"
+
+    def test_read_allow_normal_file_windows(self):
+        hook_input = {
+            "tool_name": "Read",
+            "tool_input": {"file_path": r"C:\Users\user\project\README.md"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "allow"
+
+    def test_write_deny_ssh_key_windows(self):
+        hook_input = {
+            "tool_name": "Write",
+            "tool_input": {"file_path": r"C:\Users\user\.ssh\id_rsa"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "deny"
+        assert stage == "RULE_DENY"
+
+
 class TestAutoAllowTools:
     def test_grep_allowed(self):
         hook_input = {
