@@ -55,8 +55,8 @@ def main(argv: list[str] | None = None) -> None:
     )
     rules_parser.add_argument(
         "--type",
-        choices=["Bash", "Read"],
-        help="Filter by tool type",
+        choices=["Bash", "sensitive-path"],
+        help="Filter by rule type",
     )
     rules_parser.add_argument(
         "--json",
@@ -127,7 +127,7 @@ def main(argv: list[str] | None = None) -> None:
 def _run_rules(args: argparse.Namespace) -> None:
     """Handle the rules subcommand."""
     kinds = [args.kind] if args.kind else ["deny", "allow", "ask"]
-    type_filter = args.type  # "Bash", "Read", or None
+    type_filter = args.type
 
     for kind in kinds:
         ruleset = rule_engine.load_rules(kind=kind)
@@ -149,21 +149,21 @@ def _run_rules(args: argparse.Namespace) -> None:
                     _print_rule_section(kind, "Bash", ruleset.command_rules)
                     break
 
-        if type_filter is None or type_filter == "Read":
-            for rule in ruleset.read_rules:
+        if type_filter is None or type_filter == "sensitive-path":
+            for rule in ruleset.sensitive_path_rules:
                 if args.json_output:
                     print(
                         json.dumps(
                             {
                                 "kind": kind,
-                                "type": "Read",
+                                "type": "sensitive-path",
                                 "name": rule.name,
                                 "pattern": rule.pattern.pattern,
                             }
                         )
                     )
                 else:
-                    _print_rule_section(kind, "Read", ruleset.read_rules)
+                    _print_rule_section(kind, "sensitive-path", ruleset.sensitive_path_rules)
                     break
 
     # Auto-allow tools

@@ -63,10 +63,12 @@ class TestInstall:
 
 
 class TestInstallPermissions:
-    def test_install_adds_permissions_deny(self, settings_file, managed):
+    def test_install_no_deny_permissions(self, settings_file, managed):
+        """Sensitive path deny is handled by hook, not settings.json."""
         install(settings_file)
         settings = json.loads(settings_file.read_text())
-        assert set(managed["deny"]).issubset(set(settings["permissions"]["deny"]))
+        assert managed["deny"] == []
+        assert "deny" not in settings.get("permissions", {}) or settings["permissions"]["deny"] == []
 
     def test_install_adds_permissions_allow(self, settings_file, managed):
         install(settings_file)
@@ -82,9 +84,16 @@ class TestInstallPermissions:
         install(settings_file)
         install(settings_file)
         settings = json.loads(settings_file.read_text())
-        assert settings["permissions"]["deny"].count(managed["deny"][0]) == 1
         assert settings["permissions"]["allow"].count(managed["allow"][0]) == 1
         assert settings["permissions"]["ask"].count(managed["ask"][0]) == 1
+
+    def test_install_adds_read_write_edit_to_allow(self, settings_file):
+        install(settings_file)
+        settings = json.loads(settings_file.read_text())
+        allow = settings["permissions"]["allow"]
+        assert "Read" in allow
+        assert "Write" in allow
+        assert "Edit" in allow
 
     def test_install_preserves_user_permissions(self, settings_file):
         settings_file.write_text(
@@ -92,8 +101,8 @@ class TestInstallPermissions:
                 {
                     "permissions": {
                         "deny": ["Bash(rm -rf /*)"],
-                        "allow": ["Read"],
-                        "ask": ["Write"],
+                        "allow": ["MyCustomTool"],
+                        "ask": ["AnotherCustomTool"],
                     }
                 }
             )
@@ -101,8 +110,8 @@ class TestInstallPermissions:
         install(settings_file)
         settings = json.loads(settings_file.read_text())
         assert "Bash(rm -rf /*)" in settings["permissions"]["deny"]
-        assert "Read" in settings["permissions"]["allow"]
-        assert "Write" in settings["permissions"]["ask"]
+        assert "MyCustomTool" in settings["permissions"]["allow"]
+        assert "AnotherCustomTool" in settings["permissions"]["ask"]
 
     def test_install_preserves_existing_hooks(self, settings_file):
         settings_file.write_text(
@@ -189,8 +198,8 @@ class TestUninstall:
                 {
                     "permissions": {
                         "deny": ["Bash(rm -rf /*)"],
-                        "allow": ["Read"],
-                        "ask": ["Write"],
+                        "allow": ["MyCustomTool"],
+                        "ask": ["AnotherCustomTool"],
                     }
                 }
             )
@@ -201,8 +210,8 @@ class TestUninstall:
 
         settings = json.loads(settings_file.read_text())
         assert "Bash(rm -rf /*)" in settings["permissions"]["deny"]
-        assert "Read" in settings["permissions"]["allow"]
-        assert "Write" in settings["permissions"]["ask"]
+        assert "MyCustomTool" in settings["permissions"]["allow"]
+        assert "AnotherCustomTool" in settings["permissions"]["ask"]
 
     def test_uninstall_cleans_empty_permissions(self, settings_file):
         install(settings_file)

@@ -1,4 +1,4 @@
-"""Multi-stage evaluation engine for Bash commands and Read tool file paths."""
+"""Multi-stage evaluation engine for tool permission requests."""
 
 from __future__ import annotations
 
@@ -30,6 +30,9 @@ ASK_TOOLS = {
     "mcp__claude_ai_Slack__slack_update_canvas",
 }
 
+# File tools evaluated through sensitive path deny rules.
+FILE_TOOLS = {"Read", "Write", "Edit", "MultiEdit"}
+
 
 def _is_auto_allowed(tool_name: str) -> bool:
     """Check if a tool matches any AUTO_ALLOW_TOOLS entry (exact or glob)."""
@@ -47,8 +50,8 @@ def evaluate(hook_input: dict[str, Any]) -> tuple[str, str, str] | None:
 
     if tool_name == "Bash":
         return _evaluate_bash(tool_input, hook_input)
-    elif tool_name == "Read":
-        return _evaluate_read(tool_input)
+    elif tool_name in FILE_TOOLS:
+        return _evaluate_file(tool_input)
     elif _is_auto_allowed(tool_name):
         return "allow", f"Auto-allowed tool: {tool_name}", "AUTO_ALLOW"
     elif tool_name in ASK_TOOLS:
@@ -85,14 +88,12 @@ def _evaluate_bash(
     return decision, reason, "LLM_JUDGE"
 
 
-def _evaluate_read(tool_input: dict[str, Any]) -> tuple[str, str, str]:
-    """Evaluate a Read tool file path through read_deny rules."""
+def _evaluate_file(tool_input: dict[str, Any]) -> tuple[str, str, str]:
+    """Evaluate a file tool (Read/Write/Edit/MultiEdit) through sensitive path rules."""
     file_path = tool_input.get("file_path", "")
 
-    # Read deny rules
-    deny_match = rules.match_read_deny(file_path)
+    deny_match = rules.match_sensitive_path(file_path)
     if deny_match:
-        return "deny", f"Blocked by read rule: {deny_match.name}", "RULE_DENY"
+        return "deny", f"Blocked by sensitive path rule: {deny_match.name}", "RULE_DENY"
 
-    # No match: allow
-    return "allow", "No read deny rule matched", "RULE_ALLOW"
+    return "allow", "No sensitive path rule matched", "RULE_ALLOW"

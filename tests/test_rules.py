@@ -3,12 +3,11 @@
 import pytest
 
 from claude_sentinel.rule_engine import (
-    get_read_deny_permission_globs,
     load_rules,
     match_allow,
     match_ask,
     match_deny,
-    match_read_deny,
+    match_sensitive_path,
     reset_cache,
 )
 
@@ -305,138 +304,138 @@ class TestAllowRules:
         assert match_allow("claude sessions list") is not None
 
 
-class TestReadDenyRules:
+class TestSensitivePathRules:
     # A. Environment / config files
     def test_env_files(self):
-        assert match_read_deny(".env") is not None
-        assert match_read_deny("/home/user/.env") is not None
-        assert match_read_deny("/project/.env.local") is not None
-        assert match_read_deny("/project/.env.production") is not None
+        assert match_sensitive_path(".env") is not None
+        assert match_sensitive_path("/home/user/.env") is not None
+        assert match_sensitive_path("/project/.env.local") is not None
+        assert match_sensitive_path("/project/.env.production") is not None
 
     def test_envrc(self):
-        assert match_read_deny(".envrc") is not None
-        assert match_read_deny("/project/.envrc") is not None
+        assert match_sensitive_path(".envrc") is not None
+        assert match_sensitive_path("/project/.envrc") is not None
 
     def test_secrets_files(self):
-        assert match_read_deny("secrets.yml") is not None
-        assert match_read_deny("/project/secrets.yaml") is not None
-        assert match_read_deny("secrets.json") is not None
-        assert match_read_deny("secrets.toml") is not None
+        assert match_sensitive_path("secrets.yml") is not None
+        assert match_sensitive_path("/project/secrets.yaml") is not None
+        assert match_sensitive_path("secrets.json") is not None
+        assert match_sensitive_path("secrets.toml") is not None
 
     def test_terraform_vars(self):
-        assert match_read_deny("terraform.tfvars") is not None
-        assert match_read_deny("terraform.tfvars.json") is not None
-        assert match_read_deny("/infra/terraform.tfvars") is not None
+        assert match_sensitive_path("terraform.tfvars") is not None
+        assert match_sensitive_path("terraform.tfvars.json") is not None
+        assert match_sensitive_path("/infra/terraform.tfvars") is not None
 
     # B. SSH / crypto keys
     def test_ssh_dir(self):
-        assert match_read_deny("/home/user/.ssh/id_rsa") is not None
-        assert match_read_deny("/home/user/.ssh/config") is not None
-        assert match_read_deny(".ssh/known_hosts") is not None
+        assert match_sensitive_path("/home/user/.ssh/id_rsa") is not None
+        assert match_sensitive_path("/home/user/.ssh/config") is not None
+        assert match_sensitive_path(".ssh/known_hosts") is not None
 
     def test_gnupg_dir(self):
-        assert match_read_deny("/home/user/.gnupg/secring.gpg") is not None
-        assert match_read_deny(".gnupg/trustdb.gpg") is not None
+        assert match_sensitive_path("/home/user/.gnupg/secring.gpg") is not None
+        assert match_sensitive_path(".gnupg/trustdb.gpg") is not None
 
     def test_private_key_files(self):
-        assert match_read_deny("server.pem") is not None
-        assert match_read_deny("/etc/ssl/private/server.key") is not None
-        assert match_read_deny("cert.pem") is not None
+        assert match_sensitive_path("server.pem") is not None
+        assert match_sensitive_path("/etc/ssl/private/server.key") is not None
+        assert match_sensitive_path("cert.pem") is not None
 
     def test_keystore_files(self):
-        assert match_read_deny("keystore.p12") is not None
-        assert match_read_deny("app.pfx") is not None
-        assert match_read_deny("release.jks") is not None
-        assert match_read_deny("my.keystore") is not None
+        assert match_sensitive_path("keystore.p12") is not None
+        assert match_sensitive_path("app.pfx") is not None
+        assert match_sensitive_path("release.jks") is not None
+        assert match_sensitive_path("my.keystore") is not None
 
     # C. Cloud provider credentials
     def test_aws_dir(self):
-        assert match_read_deny("/home/user/.aws/credentials") is not None
-        assert match_read_deny("/home/user/.aws/config") is not None
-        assert match_read_deny(".aws/credentials") is not None
+        assert match_sensitive_path("/home/user/.aws/credentials") is not None
+        assert match_sensitive_path("/home/user/.aws/config") is not None
+        assert match_sensitive_path(".aws/credentials") is not None
 
     def test_gcloud_dir(self):
-        assert match_read_deny("/home/user/.config/gcloud/application_default_credentials.json") is not None
-        assert match_read_deny(".config/gcloud/properties") is not None
+        assert match_sensitive_path("/home/user/.config/gcloud/application_default_credentials.json") is not None
+        assert match_sensitive_path(".config/gcloud/properties") is not None
 
     def test_azure_dir(self):
-        assert match_read_deny("/home/user/.azure/accessTokens.json") is not None
-        assert match_read_deny(".azure/azureProfile.json") is not None
+        assert match_sensitive_path("/home/user/.azure/accessTokens.json") is not None
+        assert match_sensitive_path(".azure/azureProfile.json") is not None
 
     def test_credentials_json(self):
-        assert match_read_deny("credentials.json") is not None
-        assert match_read_deny("/project/client_secret.json") is not None
-        assert match_read_deny("service-account-key.json") is not None
-        assert match_read_deny("service_account_prod.json") is not None
+        assert match_sensitive_path("credentials.json") is not None
+        assert match_sensitive_path("/project/client_secret.json") is not None
+        assert match_sensitive_path("service-account-key.json") is not None
+        assert match_sensitive_path("service_account_prod.json") is not None
 
     def test_terraform_rc(self):
-        assert match_read_deny("/home/user/.terraformrc") is not None
-        assert match_read_deny(".terraformrc") is not None
+        assert match_sensitive_path("/home/user/.terraformrc") is not None
+        assert match_sensitive_path(".terraformrc") is not None
 
     # D. Container / orchestration
     def test_docker_config(self):
-        assert match_read_deny("/home/user/.docker/config.json") is not None
-        assert match_read_deny(".docker/config.json") is not None
+        assert match_sensitive_path("/home/user/.docker/config.json") is not None
+        assert match_sensitive_path(".docker/config.json") is not None
 
     def test_kube_config(self):
-        assert match_read_deny("/home/user/.kube/config") is not None
-        assert match_read_deny(".kube/config") is not None
+        assert match_sensitive_path("/home/user/.kube/config") is not None
+        assert match_sensitive_path(".kube/config") is not None
 
     # E. Package manager / dev tool auth
     def test_netrc(self):
-        assert match_read_deny("/home/user/.netrc") is not None
+        assert match_sensitive_path("/home/user/.netrc") is not None
 
     def test_npmrc(self):
-        assert match_read_deny("/home/user/.npmrc") is not None
-        assert match_read_deny("/project/.npmrc") is not None
+        assert match_sensitive_path("/home/user/.npmrc") is not None
+        assert match_sensitive_path("/project/.npmrc") is not None
 
     def test_pypirc(self):
-        assert match_read_deny("/home/user/.pypirc") is not None
+        assert match_sensitive_path("/home/user/.pypirc") is not None
 
     def test_gh_hosts(self):
-        assert match_read_deny("/home/user/.config/gh/hosts.yml") is not None
+        assert match_sensitive_path("/home/user/.config/gh/hosts.yml") is not None
 
     def test_maven_settings(self):
-        assert match_read_deny("/home/user/.m2/settings.xml") is not None
+        assert match_sensitive_path("/home/user/.m2/settings.xml") is not None
 
     def test_gradle_properties(self):
-        assert match_read_deny("/home/user/.gradle/gradle.properties") is not None
+        assert match_sensitive_path("/home/user/.gradle/gradle.properties") is not None
 
     def test_boto_config(self):
-        assert match_read_deny("/home/user/.boto") is not None
-        assert match_read_deny("/home/user/.s3cfg") is not None
+        assert match_sensitive_path("/home/user/.boto") is not None
+        assert match_sensitive_path("/home/user/.s3cfg") is not None
 
     # F. Database
     def test_pgpass(self):
-        assert match_read_deny("/home/user/.pgpass") is not None
+        assert match_sensitive_path("/home/user/.pgpass") is not None
 
     def test_mycnf(self):
-        assert match_read_deny("/home/user/.my.cnf") is not None
+        assert match_sensitive_path("/home/user/.my.cnf") is not None
 
     # G. Other
     def test_htpasswd(self):
-        assert match_read_deny("/etc/.htpasswd") is not None
+        assert match_sensitive_path("/etc/.htpasswd") is not None
 
     def test_vault_token(self):
-        assert match_read_deny("/home/user/.vault-token") is not None
+        assert match_sensitive_path("/home/user/.vault-token") is not None
 
     # False positives: these should NOT match
     def test_non_env_files(self):
-        assert match_read_deny("README.md") is None
-        assert match_read_deny("/home/user/config.toml") is None
-        assert match_read_deny("environment.py") is None
+        assert match_sensitive_path("README.md") is None
+        assert match_sensitive_path("/home/user/config.toml") is None
+        assert match_sensitive_path("environment.py") is None
 
     def test_public_key_not_denied(self):
-        assert match_read_deny("id_rsa.pub") is None
+        assert match_sensitive_path("id_rsa.pub") is None
 
     def test_pub_pem_not_denied(self):
-        assert match_read_deny("foo.pub.pem") is None
+        assert match_sensitive_path("foo.pub.pem") is None
 
     def test_terraform_state_not_denied(self):
-        assert match_read_deny("terraform.tfstate") is None
+        assert match_sensitive_path("terraform.tfstate") is None
 
     def test_aws_lambda_dir_not_denied(self):
-        assert match_read_deny("/project/.aws-lambda/handler.py") is None
+        assert match_sensitive_path("/project/.aws-lambda/handler.py") is None
 
 
 class TestAskRules:
@@ -616,7 +615,7 @@ class TestLoadRules:
     def test_load_deny(self):
         ruleset = load_rules(kind="deny")
         assert len(ruleset.command_rules) > 0
-        assert len(ruleset.read_rules) > 0
+        assert len(ruleset.sensitive_path_rules) > 0
 
     def test_load_allow(self):
         ruleset = load_rules(kind="allow")
@@ -627,16 +626,3 @@ class TestLoadRules:
         assert len(ruleset.command_rules) > 0
 
 
-class TestPermissionGlobs:
-    def test_read_rules_have_permission_globs(self):
-        ruleset = load_rules(kind="deny")
-        for rule in ruleset.read_rules:
-            assert len(rule.permission_globs) > 0, (
-                f"read_rule '{rule.name}' is missing permission_globs"
-            )
-
-    def test_get_read_deny_permission_globs(self):
-        globs = get_read_deny_permission_globs()
-        assert isinstance(globs, list)
-        assert len(globs) > 0
-        assert all(g.startswith("Read(") for g in globs)

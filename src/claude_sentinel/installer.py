@@ -7,7 +7,6 @@ import shutil
 from pathlib import Path
 
 from claude_sentinel.evaluator import ASK_TOOLS, AUTO_ALLOW_TOOLS
-from claude_sentinel.rule_engine import get_read_deny_permission_globs
 
 SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
 
@@ -24,11 +23,15 @@ HOOK_ENTRIES = [
 ]
 
 
+# Tools evaluated by the hook (not in AUTO_ALLOW_TOOLS) but allowed in settings.json.
+HOOK_EVALUATED_ALLOW_TOOLS = {"Read", "Write", "Edit", "MultiEdit"}
+
+
 def _get_managed_permissions() -> dict[str, list[str]]:
     """Get managed permission entries from rules and evaluator."""
     return {
-        "deny": get_read_deny_permission_globs(),
-        "allow": sorted(AUTO_ALLOW_TOOLS),
+        "deny": [],
+        "allow": sorted(AUTO_ALLOW_TOOLS | HOOK_EVALUATED_ALLOW_TOOLS),
         "ask": sorted(ASK_TOOLS),
     }
 

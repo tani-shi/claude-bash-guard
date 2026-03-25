@@ -91,8 +91,10 @@ class TestBashEvaluation:
         assert stage == "RULE_ALLOW"
 
 
-class TestReadEvaluation:
-    def test_deny_env_file(self):
+class TestFileToolEvaluation:
+    """Read, Write, Edit, and MultiEdit share the same sensitive path rules."""
+
+    def test_read_deny_env_file(self):
         hook_input = {
             "tool_name": "Read",
             "tool_input": {"file_path": "/project/.env"},
@@ -101,10 +103,61 @@ class TestReadEvaluation:
         assert decision == "deny"
         assert stage == "RULE_DENY"
 
-    def test_allow_normal_file(self):
+    def test_read_allow_normal_file(self):
         hook_input = {
             "tool_name": "Read",
             "tool_input": {"file_path": "/project/README.md"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "allow"
+
+    def test_write_deny_env_file(self):
+        hook_input = {
+            "tool_name": "Write",
+            "tool_input": {"file_path": "/project/.env"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "deny"
+        assert stage == "RULE_DENY"
+
+    def test_write_allow_normal_file(self):
+        hook_input = {
+            "tool_name": "Write",
+            "tool_input": {"file_path": "/project/README.md"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "allow"
+
+    def test_edit_deny_ssh_key(self):
+        hook_input = {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": "/home/user/.ssh/id_rsa"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "deny"
+        assert stage == "RULE_DENY"
+
+    def test_edit_allow_normal_file(self):
+        hook_input = {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": "/project/src/main.py"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "allow"
+
+    def test_multiedit_deny_ssh_key(self):
+        hook_input = {
+            "tool_name": "MultiEdit",
+            "tool_input": {"file_path": "/home/user/.ssh/config"},
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "deny"
+        assert stage == "RULE_DENY"
+
+    def test_multiedit_allow_normal_file(self):
+        hook_input = {
+            "tool_name": "MultiEdit",
+            "tool_input": {"file_path": "/project/src/main.py"},
         }
         decision, reason, stage = evaluate(hook_input)
         assert decision == "allow"
@@ -296,8 +349,8 @@ class TestExternalImpactCommands:
 class TestUnknownTool:
     def test_passthrough(self):
         hook_input = {
-            "tool_name": "Write",
-            "tool_input": {"file_path": "/test.txt"},
+            "tool_name": "SomeUnknownTool",
+            "tool_input": {"key": "value"},
         }
         result = evaluate(hook_input)
         assert result is None

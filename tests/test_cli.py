@@ -50,8 +50,8 @@ class TestHookMode:
     def test_unknown_tool_passthrough(self, capsys, log_dir):
         hook_input = {
             "hook_event_name": "PermissionRequest",
-            "tool_name": "Write",
-            "tool_input": {"file_path": "/test.txt"},
+            "tool_name": "SomeUnknownTool",
+            "tool_input": {"key": "value"},
             "session_id": "test",
             "cwd": "/tmp",
         }
@@ -244,9 +244,9 @@ class TestRulesSubcommand:
         assert "Auto-allow tools:" not in out
 
     def test_rules_type_filter(self, capsys):
-        main(["rules", "--type", "Read"])
+        main(["rules", "--type", "sensitive-path"])
         out = capsys.readouterr().out
-        assert "Deny rules (Read):" in out
+        assert "Deny rules (sensitive-path):" in out
         assert "(Bash):" not in out
 
     def test_rules_json(self, capsys):
@@ -258,12 +258,12 @@ class TestRulesSubcommand:
             rec = json.loads(line)
             assert "kind" in rec
             assert "type" in rec
-            assert rec["type"] in ("Bash", "Read", "tool")
+            assert rec["type"] in ("Bash", "sensitive-path", "tool")
             assert "name" in rec
 
     def test_rules_combined_filter(self, capsys):
-        main(["rules", "--kind", "deny", "--type", "Read"])
+        main(["rules", "--kind", "deny", "--type", "sensitive-path"])
         out = capsys.readouterr().out
-        assert "Deny rules (Read):" in out
+        assert "Deny rules (sensitive-path):" in out
         assert "(Bash):" not in out
         assert "Allow rules" not in out

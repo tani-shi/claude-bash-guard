@@ -24,7 +24,7 @@ claude-sentinel uninstall
 
 ## How it works
 
-Every Bash command and Read file path is evaluated through a multi-stage pipeline:
+Every Bash command and file path (Read/Write/Edit/MultiEdit) is evaluated through a multi-stage pipeline:
 
 ```
 stdin JSON → RULE_DENY → RULE_ALLOW → RULE_ASK → LLM_JUDGE → stdout JSON
@@ -37,13 +37,11 @@ stdin JSON → RULE_DENY → RULE_ALLOW → RULE_ASK → LLM_JUDGE → stdout JS
 | RULE_ASK | Regex ask list | Instant | Prompts user confirmation for commands that need review (e.g. `ssh`, `systemctl`) |
 | LLM_JUDGE | LLM judge | ~2-5s | Calls `claude -p` with haiku to evaluate ambiguous commands |
 
-For the `Read` tool, only RULE_DENY rules are checked (see [Read deny rules](#read-deny-rules-rule_deny) below). If no deny rule matches, the read is allowed.
+For file tools (`Read`, `Write`, `Edit`, `MultiEdit`), sensitive path deny rules are checked. If no deny rule matches, the operation is allowed. These rules are evaluated purely by the hook and are **not** written to `settings.json`. The installer adds these tools to `permissions.allow` so Claude Code does not prompt for confirmation, while the hook dynamically blocks access to sensitive paths.
 
 Read-only tools with no side effects (`Grep`, `Glob`, `WebFetch`, `WebSearch`, Slack read/search tools) are auto-allowed without evaluation.
 
 Tools with external impact (e.g. Slack send/schedule/canvas tools) require user confirmation (ASK).
-
-Other tools (e.g. `Write`, `Edit`) are passed through without evaluation (Claude Code default behavior applies).
 
 ## Deny rules (RULE_DENY)
 
@@ -57,11 +55,10 @@ Other tools (e.g. `Write`, `Edit`) are passed through without evaluation (Claude
 | `pipe-to-shell` | `curl \| bash`, `wget \| sh` |
 | `force-push-main` | `git push --force` to `main`/`master` (allows `--force-with-lease`) |
 | `env-write` | Writing to `.env` files via `>`, `>>`, `tee` |
-| `env-files` | Reading `.env` / `.env.*` files (Read tool) |
 
-## Read deny rules (RULE_DENY)
+## Sensitive path deny rules (RULE_DENY)
 
-Sensitive files blocked from the `Read` tool:
+Sensitive files blocked from `Read`, `Write`, `Edit`, and `MultiEdit` tools:
 
 | Category | Rule | Pattern |
 |----------|------|---------|
@@ -105,6 +102,13 @@ Read-only tools with no side effects are automatically allowed without rule eval
 - `WebSearch` — web search
 - `mcp__claude_ai_Slack__slack_read_*` — Slack read tools
 - `mcp__claude_ai_Slack__slack_search_*` — Slack search tools
+
+Additionally, file tools are added to `permissions.allow` and evaluated by the hook with sensitive path deny rules:
+
+- `Read` — file reading
+- `Write` — file writing
+- `Edit` — file editing
+- `MultiEdit` — multi-edit
 
 ## Allow rules (RULE_ALLOW)
 
