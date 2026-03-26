@@ -79,8 +79,8 @@ class TestBashEvaluation:
         assert decision == "ask"
         assert stage == "RULE_ASK"
 
-    def test_allow_overrides_ask(self):
-        """Allow rules take priority over ask rules."""
+    def test_ask_checked_before_allow(self):
+        """Ask rules are checked before allow rules for safety."""
         hook_input = {
             "tool_name": "Bash",
             "tool_input": {"command": "ls -la"},
@@ -89,6 +89,28 @@ class TestBashEvaluation:
         decision, reason, stage = evaluate(hook_input)
         assert decision == "allow"
         assert stage == "RULE_ALLOW"
+
+    def test_aws_read_allowed(self):
+        """AWS read commands pass through narrowed ask rule to allow."""
+        hook_input = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "aws ec2 describe-instances --region us-east-1"},
+            "cwd": "/tmp",
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "allow"
+        assert stage == "RULE_ALLOW"
+
+    def test_aws_mutate_asks(self):
+        """AWS mutate commands are caught by ask rule."""
+        hook_input = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "aws s3 cp file s3://bucket"},
+            "cwd": "/tmp",
+        }
+        decision, reason, stage = evaluate(hook_input)
+        assert decision == "ask"
+        assert stage == "RULE_ASK"
 
 
 class TestFileToolEvaluation:

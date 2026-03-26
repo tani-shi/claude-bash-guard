@@ -64,7 +64,7 @@ def evaluate(hook_input: dict[str, Any]) -> tuple[str, str, str] | None:
 def _evaluate_bash(
     tool_input: dict[str, Any], hook_input: dict[str, Any]
 ) -> tuple[str, str, str]:
-    """Evaluate a Bash command: RULE_DENY -> RULE_ALLOW -> LLM_JUDGE."""
+    """Evaluate a Bash command: RULE_DENY -> RULE_ASK -> RULE_ALLOW -> LLM_JUDGE."""
     command = tool_input.get("command", "")
 
     # Deny rules
@@ -72,15 +72,15 @@ def _evaluate_bash(
     if deny_match:
         return "deny", f"Blocked by deny rule: {deny_match.name}", "RULE_DENY"
 
+    # Ask rules (checked before allow for safety)
+    ask_match = rules.match_ask(command)
+    if ask_match:
+        return "ask", f"Matched ask rule: {ask_match.name}", "RULE_ASK"
+
     # Allow rules
     allow_match = rules.match_allow(command)
     if allow_match:
         return "allow", f"Allowed by rule: {allow_match.name}", "RULE_ALLOW"
-
-    # Ask rules
-    ask_match = rules.match_ask(command)
-    if ask_match:
-        return "ask", f"Matched ask rule: {ask_match.name}", "RULE_ASK"
 
     # LLM judge
     cwd = hook_input.get("cwd", ".")

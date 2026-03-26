@@ -14,7 +14,7 @@ command_regex = '''^\s*crontab\s+(-e|-r)'''
 
 [[rules]]
 name = "deploy"
-command_regex = '''^\s*(\S+\s+)*deploy(\s|$)'''
+command_regex = '''^\s*(?!(echo|cat|grep|rg|ag|find|head|tail|wc|sort|diff|git|ls|sed|awk|jq|python3?|node|file|strings)\s)(\S+\s+){0,2}deploy(\s|$)'''
 
 [[rules]]
 name = "make-deploy"
@@ -127,7 +127,7 @@ command_regex = '''^\s*gcloud\s+.*\s+(create|delete|update|set|add|remove|deploy
 # --- AWS CLI mutations (catch-all for non-read operations) ---
 [[rules]]
 name = "aws-mutate"
-command_regex = '''^\s*aws\s+'''
+command_regex = '''^\s*aws\s+(?!\S+\s+(list|describe|get|show|wait)(-\w+)*(\s|$))(?!sts\s+get-caller-identity(\s|$))'''
 
 # --- Firebase mutation operations ---
 [[rules]]

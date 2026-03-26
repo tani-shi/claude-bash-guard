@@ -27,14 +27,14 @@ claude-sentinel uninstall
 Every Bash command and file path (Read/Write/Edit/MultiEdit) is evaluated through a multi-stage pipeline:
 
 ```
-stdin JSON → RULE_DENY → RULE_ALLOW → RULE_ASK → LLM_JUDGE → stdout JSON
+stdin JSON → RULE_DENY → RULE_ASK → RULE_ALLOW → LLM_JUDGE → stdout JSON
 ```
 
 | Stage | Method | Speed | Description |
 |-------|--------|-------|-------------|
 | RULE_DENY | Regex deny list | Instant | Blocks known-dangerous commands (e.g. `sudo`, `rm -rf /`, `curl \| bash`) |
-| RULE_ALLOW | Regex allow list | Instant | Permits known-safe commands (e.g. `ls`, `git status`, `make`) |
 | RULE_ASK | Regex ask list | Instant | Prompts user confirmation for commands that need review (e.g. `ssh`, `systemctl`) |
+| RULE_ALLOW | Regex allow list | Instant | Permits known-safe commands (e.g. `ls`, `git status`, `make`) |
 | LLM_JUDGE | LLM judge | ~2-5s | Calls `claude -p` with haiku to evaluate ambiguous commands |
 
 For file tools (`Read`, `Write`, `Edit`, `MultiEdit`), sensitive path deny rules are checked. If no deny rule matches, the operation is allowed. These rules are evaluated purely by the hook and are **not** written to `settings.json`. The installer adds these tools to `permissions.allow` so Claude Code does not prompt for confirmation, while the hook dynamically blocks access to sensitive paths.

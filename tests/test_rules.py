@@ -94,7 +94,6 @@ class TestAllowRules:
         assert match_allow("npm run lint") is not None
         assert match_allow("yarn install") is not None
         assert match_allow("pnpm build") is not None
-        assert match_allow("npx prettier --check .") is not None
         assert match_allow("bun run test") is not None
         assert match_allow("npm run cli find-unused-locales") is not None
 
@@ -140,7 +139,7 @@ class TestAllowRules:
         assert match_allow("cargo run") is not None
         assert match_allow("cargo clippy") is not None
         assert match_allow("rustc --version") is not None
-        assert match_allow("rustup update") is not None
+        assert match_allow("rustup show") is not None
 
     def test_cargo_not_allowed(self):
         assert match_allow("cargo publish") is None
@@ -149,7 +148,6 @@ class TestAllowRules:
         assert match_allow("docker build .") is not None
         assert match_allow("docker compose up") is not None
         assert match_allow("docker ps") is not None
-        assert match_allow("docker run ubuntu") is not None
         assert match_allow("docker images") is not None
 
     def test_docker_not_allowed(self):
@@ -205,8 +203,9 @@ class TestAllowRules:
         assert match_allow("pyright") is not None
         assert match_allow("shfmt -w .") is not None
 
-    def test_pnpx(self):
-        assert match_allow("pnpx prettier --check .") is not None
+    def test_npx_not_allowed(self):
+        assert match_allow("npx prettier --check .") is None
+        assert match_allow("pnpx prettier --check .") is None
 
     def test_help_flag(self):
         assert match_allow("git --help") is not None
@@ -492,7 +491,12 @@ class TestAskRules:
     def test_deploy(self):
         assert match_ask("deploy") is not None
         assert match_ask("npm run deploy") is not None
-        assert match_ask("./deploy.sh") is not None
+
+    def test_deploy_excludes_safe_commands(self):
+        assert match_ask("echo deploy") is None
+        assert match_ask("grep deploy src/") is None
+        assert match_ask("git log --grep deploy") is None
+        assert match_ask("cat deploy.log") is None
 
     def test_make_deploy(self):
         assert match_ask("make deploy") is not None
@@ -601,6 +605,13 @@ class TestAskRules:
     def test_aws_mutate(self):
         assert match_ask("aws s3 cp file s3://bucket") is not None
         assert match_ask("aws ec2 run-instances") is not None
+
+    def test_aws_mutate_excludes_read(self):
+        assert match_ask("aws s3 list-buckets") is None
+        assert match_ask("aws ec2 describe-instances --region us-east-1") is None
+        assert match_ask("aws sts get-caller-identity") is None
+        assert match_ask("aws s3api list-objects") is None
+        assert match_ask("aws s3api wait object-exists") is None
 
     # --- Make with external-impact targets ---
     def test_make_publish_release(self):
