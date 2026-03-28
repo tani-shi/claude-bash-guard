@@ -318,8 +318,8 @@ class TestAllowRules:
         assert match_allow("docker-compose up") is not None
         assert match_allow("docker-compose logs") is not None
 
-    def test_osascript(self):
-        assert match_allow("osascript -e 'tell application \"Finder\"'") is not None
+    def test_osascript_moved_to_ask(self):
+        assert match_allow("osascript -e 'tell application \"Finder\"'") is None
 
     def test_mmdc(self):
         assert match_allow("mmdc -i diagram.mmd -o output.svg") is not None
@@ -661,6 +661,108 @@ class TestAskRules:
         assert match_ask("ls -la") is None
         assert match_ask("git status") is None
         assert match_ask("echo hello") is None
+
+    # --- rm recursive ---
+    def test_rm_recursive(self):
+        assert match_ask("rm -rf dir/") is not None
+        assert match_ask("rm -r dir/") is not None
+        assert match_ask("rm -Rf dir/") is not None
+        assert match_ask("rm --recursive dir/") is not None
+        assert match_ask("rm -rf ./src") is not None
+
+    def test_rm_simple_not_asked(self):
+        assert match_ask("rm file.txt") is None
+        assert match_ask("trash file.txt") is None
+
+    # --- git destructive operations ---
+    def test_git_reset_hard(self):
+        assert match_ask("git reset --hard") is not None
+        assert match_ask("git reset --hard HEAD~1") is not None
+        assert match_ask("git -C /tmp/repo reset --hard") is not None
+
+    def test_git_reset_soft_not_asked(self):
+        assert match_ask("git reset HEAD file.txt") is None
+        assert match_ask("git reset --soft HEAD~1") is None
+
+    def test_git_checkout_discard(self):
+        assert match_ask("git checkout -- .") is not None
+        assert match_ask("git checkout -- file.txt") is not None
+        assert match_ask("git -C /tmp/repo checkout -- file.txt") is not None
+
+    def test_git_checkout_branch_not_asked(self):
+        assert match_ask("git checkout main") is None
+        assert match_ask("git checkout -b feature") is None
+
+    def test_git_clean(self):
+        assert match_ask("git clean -fd") is not None
+        assert match_ask("git clean -f") is not None
+        assert match_ask("git -C /tmp/repo clean -fd") is not None
+
+    # --- docker-compose exec/run ---
+    def test_docker_compose_exec_run(self):
+        assert match_ask("docker compose exec web bash") is not None
+        assert match_ask("docker compose run web bash") is not None
+        assert match_ask("docker-compose exec web bash") is not None
+        assert match_ask("docker-compose run web bash") is not None
+
+    def test_docker_compose_up_not_asked(self):
+        assert match_ask("docker compose up") is None
+        assert match_ask("docker-compose up") is None
+
+    # --- sed in-place ---
+    def test_sed_in_place(self):
+        assert match_ask("sed -i 's/foo/bar/' file.txt") is not None
+        assert match_ask("sed --in-place 's/foo/bar/' file.txt") is not None
+
+    def test_sed_stdout_not_asked(self):
+        assert match_ask("sed 's/foo/bar/' file.txt") is None
+
+    # --- osascript ---
+    def test_osascript_ask(self):
+        assert match_ask("osascript -e 'tell app \"Finder\"'") is not None
+
+    # --- bun x ---
+    def test_bun_x_ask(self):
+        assert match_ask("bun x prettier --check .") is not None
+
+    def test_bun_run_not_asked(self):
+        assert match_ask("bun run test") is None
+
+    # --- xargs destructive ---
+    def test_xargs_destructive(self):
+        assert match_ask("xargs rm -f") is not None
+        assert match_ask("xargs kill") is not None
+        assert match_ask("xargs mv file dest") is not None
+
+    def test_xargs_safe_not_asked(self):
+        assert match_ask("xargs echo") is None
+        assert match_ask("xargs grep pattern") is None
+
+
+class TestAllowRulesNarrowed:
+    """Tests for narrowed ALLOW rules."""
+
+    def test_rm_safe_allows_simple(self):
+        assert match_allow("rm file.txt") is not None
+        assert match_allow("trash file.txt") is not None
+        assert match_allow("trash -r dir/") is not None
+
+    def test_rm_safe_blocks_recursive(self):
+        assert match_allow("rm -rf dir/") is None
+        assert match_allow("rm -r dir/") is None
+        assert match_allow("rm --recursive dir/") is None
+
+    def test_bun_x_not_allowed(self):
+        assert match_allow("bun x prettier") is None
+        assert match_allow("bun run test") is not None
+
+    def test_export_not_allowed(self):
+        assert match_allow("export FOO=bar") is None
+        assert match_allow("env") is not None
+        assert match_allow("printenv") is not None
+
+    def test_osascript_not_allowed(self):
+        assert match_allow("osascript -e 'tell app'") is None
 
 
 class TestLoadRules:

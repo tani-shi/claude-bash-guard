@@ -72,7 +72,7 @@ command_regex = '''^\s*node\s+'''
 
 [[rules]]
 name = "bun-safe"
-command_regex = '''^\s*bun\s+(run|test|build|install|add|remove|update|init|create|pm|x)(\s|$)'''
+command_regex = '''^\s*bun\s+(run|test|build|install|add|remove|update|init|create|pm)(\s|$)'''
 
 [[rules]]
 name = "npm-safe"
@@ -152,7 +152,7 @@ command_regex = '''^\s*cd(\s|$)'''
 
 [[rules]]
 name = "rm-safe"
-command_regex = '''^\s*(rm|trash)\s+'''
+command_regex = '''^\s*(trash\s+|rm\s+(?!.*(-[a-zA-Z]*[rR]|--recursive)))'''
 
 [[rules]]
 name = "chmod-chown"
@@ -164,7 +164,7 @@ command_regex = '''^\s*(tar|zip|unzip|gzip|gunzip)\s+'''
 
 [[rules]]
 name = "env-printenv"
-command_regex = '''^\s*(env|printenv|export)\s*'''
+command_regex = '''^\s*(env|printenv)\s*'''
 
 [[rules]]
 name = "linters"
@@ -328,10 +328,6 @@ command_regex = '''^\s*uuidgen\s*'''
 [[rules]]
 name = "sleep"
 command_regex = '''^\s*sleep\s+'''
-
-[[rules]]
-name = "osascript"
-command_regex = '''^\s*osascript\s+'''
 
 # --- Mermaid CLI ---
 [[rules]]

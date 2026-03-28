@@ -114,14 +114,14 @@ Additionally, file tools are added to `permissions.allow` and evaluated by the h
 
 Common development commands are auto-approved, including:
 
-- File operations: `ls`, `cat`, `head`, `tail`, `find`, `grep`, `cp`, `mv`, `mkdir`, `touch`, `rm`, `trash`
-- Git: `status`, `log`, `diff`, `add`, `commit`, `revert`, `push` (with `--force-with-lease`), etc.
-- Build tools: `make` (safe targets with hyphenated variants like `build-*`, `type-*`, `generate-*`; excludes `deploy`/`publish`/`release`/`push`/`tf-*`/`terraform-*`), `cargo` (safe subcommands only), `go build`, `node`/`npx`/`bun`, `python`, `uv` (excludes `publish`)
+- File operations: `ls`, `cat`, `head`, `tail`, `find`, `grep`, `cp`, `mv`, `mkdir`, `touch`, `rm` (non-recursive only; `rm -r`/`rm -rf` require confirmation), `trash`
+- Git: `status`, `log`, `diff`, `add`, `commit`, `revert`, `push` (with `--force-with-lease`), etc. (destructive ops like `reset --hard`, `checkout --`, `clean` require confirmation)
+- Build tools: `make` (safe targets with hyphenated variants like `build-*`, `type-*`, `generate-*`; excludes `deploy`/`publish`/`release`/`push`/`tf-*`/`terraform-*`), `cargo` (safe subcommands only), `go build`, `node`, `bun` (excludes `bun x`), `python`, `uv` (excludes `publish`)
 - Package managers: `npm`/`yarn`/`pnpm` (safe subcommands only, excludes `publish`; `run` allows `test`/`build`/`lint`/`cli`/etc., excludes `deploy`/`publish`/`release`/`push`)
-- Containers: `docker` (safe subcommands only, excludes `push`)
+- Containers: `docker` (safe subcommands only, excludes `push`; `docker compose exec`/`run` require confirmation)
 - Network: `curl`/`wget` (excludes pipe-to-shell, POST/PUT/DELETE/PATCH methods, and `--data` flags)
 - Cloud: `aws` read operations (`list`, `describe`, `get`, `show`, `wait`), `gcloud` read operations (including `logging read` and `logging tail`)
-- Utilities: `echo`, `pwd`, `which`, `date`, `sort`, `sed`, `awk`, `tar`, `zip`
+- Utilities: `echo`, `pwd`, `which`, `date`, `sort`, `sed` (excludes `sed -i`), `awk`, `tar`, `zip`, `env`, `printenv`
 
 See [`src/claude_sentinel/rules/allow.toml`](src/claude_sentinel/rules/allow.toml) for the full list.
 
@@ -129,6 +129,15 @@ See [`src/claude_sentinel/rules/allow.toml`](src/claude_sentinel/rules/allow.tom
 
 Commands that prompt user confirmation without LLM evaluation:
 
+- `rm -r` / `rm -rf` / `rm --recursive` — recursive file deletion
+- `git reset --hard` — discard uncommitted changes
+- `git checkout -- <path>` — discard file changes
+- `git clean` — delete untracked files
+- `sed -i` / `sed --in-place` — in-place file editing
+- `osascript` — AppleScript execution (GUI control, keystrokes)
+- `docker compose exec` / `docker compose run` — arbitrary command execution in containers
+- `bun x` — arbitrary package execution (same as `npx`)
+- `xargs rm` / `xargs kill` / etc. — piped destructive commands
 - `ssh` — remote connections
 - `systemctl` — system service management
 - `crontab -e` / `crontab -r` — crontab editing/removal

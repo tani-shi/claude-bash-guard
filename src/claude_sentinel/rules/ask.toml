@@ -222,3 +222,41 @@ command_regex = '''^\s*(npm|yarn|pnpm)\s+run\s+.*migrat(e|ion)'''
 [[rules]]
 name = "claude-sentinel-mutate"
 command_regex = '''^\s*claude-sentinel\s+(install|uninstall)(\s|$)'''
+
+# --- Destructive file/git/container operations ---
+
+[[rules]]
+name = "rm-recursive"
+command_regex = '''^\s*rm\s+.*(-[a-zA-Z]*[rR][a-zA-Z]*\s|--recursive)'''
+
+[[rules]]
+name = "git-reset-hard"
+command_regex = '''^\s*git\s+(-C\s+\S+\s+)?reset\s+--hard'''
+
+[[rules]]
+name = "git-checkout-discard"
+command_regex = '''^\s*git\s+(-C\s+\S+\s+)?checkout\s+--\s'''
+
+[[rules]]
+name = "git-clean"
+command_regex = '''^\s*git\s+(-C\s+\S+\s+)?clean\s+'''
+
+[[rules]]
+name = "docker-compose-exec-run"
+command_regex = '''^\s*docker[\s-]+compose\s+(exec|run)(\s|$)'''
+
+[[rules]]
+name = "sed-in-place"
+command_regex = '''^\s*sed\s+(-[a-zA-Z]*i|--in-place)'''
+
+[[rules]]
+name = "osascript"
+command_regex = '''^\s*osascript\s+'''
+
+[[rules]]
+name = "bun-x-execute"
+command_regex = '''^\s*bun\s+x(\s|$)'''
+
+[[rules]]
+name = "xargs-destructive"
+command_regex = '''^\s*xargs\s+(rm|kill|pkill|killall|chmod|chown|mv|dd)'''
