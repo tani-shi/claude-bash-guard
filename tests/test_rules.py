@@ -684,14 +684,14 @@ class TestAskRules:
         assert match_ask("git reset HEAD file.txt") is None
         assert match_ask("git reset --soft HEAD~1") is None
 
-    def test_git_checkout_discard(self):
+    def test_git_checkout(self):
         assert match_ask("git checkout -- .") is not None
         assert match_ask("git checkout -- file.txt") is not None
         assert match_ask("git -C /tmp/repo checkout -- file.txt") is not None
-
-    def test_git_checkout_branch_not_asked(self):
-        assert match_ask("git checkout main") is None
-        assert match_ask("git checkout -b feature") is None
+        assert match_ask("git checkout main") is not None
+        assert match_ask("git checkout -b feature") is not None
+        assert match_ask("git checkout .") is not None
+        assert match_ask("git checkout HEAD~3") is not None
 
     def test_git_clean(self):
         assert match_ask("git clean -fd") is not None

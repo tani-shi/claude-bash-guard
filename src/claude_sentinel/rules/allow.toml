@@ -36,7 +36,7 @@ command_regex = '''^\s*git\s+(-C\s+\S+\s+)?(status|log|diff|branch|show|rev-pars
 
 [[rules]]
 name = "git-add-commit"
-command_regex = '''^\s*git\s+(-C\s+\S+\s+)?(add|commit|checkout|switch|stash|pull|fetch|rebase|merge|cherry-pick|reset|restore|revert)(\s|$)'''
+command_regex = '''^\s*git\s+(-C\s+\S+\s+)?(add|commit|switch|stash|pull|fetch|rebase|merge|cherry-pick|reset|restore|revert)(\s|$)'''
 
 [[rules]]
 name = "git-push-safe"
