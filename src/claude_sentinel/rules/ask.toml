@@ -260,3 +260,11 @@ command_regex = '''^\s*bun\s+x(\s|$)'''
 [[rules]]
 name = "xargs-destructive"
 command_regex = '''^\s*xargs\s+(rm|kill|pkill|killall|chmod|chown|mv|dd)'''
+
+# --- Indirect command execution ---
+
+# eval / source / `.` execute arbitrary code from a variable or file.
+# We can't statically inspect what they'll run, so always confirm.
+[[rules]]
+name = "eval-source"
+command_regex = '''^\s*(eval|source|\.)\s'''

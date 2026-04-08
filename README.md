@@ -37,6 +37,18 @@ stdin JSON → RULE_DENY → RULE_ASK → RULE_ALLOW → LLM_JUDGE → stdout JS
 | RULE_ALLOW | Regex allow list | Instant | Permits known-safe commands (e.g. `ls`, `git status`, `make`) |
 | LLM_JUDGE | LLM judge | ~2-5s | Calls `claude -p` with haiku to evaluate ambiguous commands |
 
+### Compound Bash commands
+
+Bash commands are not matched as a single string. A small in-house splitter (no external dependency) walks the command, tracks quoting and escaping, and finds **every individual command** inside pipelines (`|`, `|&`), lists (`&&`, `||`, `;`, `&`, newline), command substitutions (`$(…)`, `` `…` ``), process substitutions (`<(…)`, `>(…)`), subshells (`(…)`), and parameter expansions (`${…}`). Each segment is evaluated independently against DENY → ASK → ALLOW, and the overall decision is the strictest result:
+
+```
+deny  >  ask  >  llm  >  allow
+```
+
+So `cd infra && terraform apply -auto-approve` is split into `cd infra` (allow) and `terraform apply -auto-approve` (ask), and the result is **ask** — the dangerous segment cannot be hidden behind a permissive prefix. If even one segment matches no rule, the command falls through to the LLM judge with the full original string for context.
+
+The splitter only models what it needs to find command boundaries; constructs it does not handle (heredocs `<<EOF`, ANSI-C quoting `$'…'`, `case` statements, unbalanced quotes/parens) resolve to **ask** by design — a parser limitation can never silently *allow* a dangerous command, only force an extra confirmation prompt.
+
 For file tools (`Read`, `Write`, `Edit`, `MultiEdit`), sensitive path deny rules are checked. If no deny rule matches, the operation is allowed. These rules are evaluated purely by the hook and are **not** written to `settings.json`. The installer adds these tools to `permissions.allow` so Claude Code does not prompt for confirmation, while the hook dynamically blocks access to sensitive paths.
 
 Read-only tools with no side effects (`Grep`, `Glob`, `WebFetch`, `WebSearch`, Slack read/search tools) are auto-allowed without evaluation.
@@ -138,6 +150,7 @@ Commands that prompt user confirmation without LLM evaluation:
 - `docker compose exec` / `docker compose run` — arbitrary command execution in containers
 - `bun x` — arbitrary package execution (same as `npx`)
 - `xargs rm` / `xargs kill` / etc. — piped destructive commands
+- `eval` / `source` / `.` — indirect command execution from variables or files
 - `ssh` — remote connections
 - `systemctl` — system service management
 - `crontab -e` / `crontab -r` — crontab editing/removal
@@ -247,7 +260,7 @@ uv run pytest tests/ -v
 uv run claude-sentinel --test "your-command-here"
 ```
 
-Requires Python 3.11+ (uses `tomllib` from the standard library). Zero external runtime dependencies.
+Requires Python 3.11+ (uses `tomllib` from the standard library). The only runtime dependency is `claude-agent-sdk` (used by the LLM judge stage); the rule engine and the bash splitter have zero external dependencies.
 
 ## Platform support
 

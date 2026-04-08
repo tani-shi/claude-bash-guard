@@ -6,7 +6,7 @@ import re
 import tomllib
 from dataclasses import dataclass, field
 from importlib import resources
-from typing import Any
+from typing import Any, Literal
 
 
 @dataclass
@@ -117,3 +117,417 @@ def reset_cache() -> None:
     _deny_rules = None
     _allow_rules = None
     _ask_rules = None
+
+
+# --- Bash command splitter ----------------------------------------------------
+#
+# A small, dependency-free splitter that walks a bash command string and
+# returns the individual commands within it. We need just enough of bash's
+# syntax to find command boundaries — we do NOT execute, expand, or even
+# fully parse arbitrary bash. The grammar we recognise is:
+#
+#   * Operators that separate commands at the current scope:
+#       && || ; | & newline
+#     (single & is backgrounding, also a separator)
+#   * Quoting: '...' (literal), "..." (with $() and `` live), \X (escape)
+#   * Substitutions whose contents are themselves commands:
+#       $(...)   command substitution
+#       `...`    command substitution (backtick form)
+#       <(...)   process substitution (read)
+#       >(...)   process substitution (write)
+#       (...)    subshell
+#   * Parameter expansion ${...} (contents are NOT commands, but may
+#     contain $(...) which IS a command)
+#   * Redirections that include & as a fd reference: >&N, <&N, &>, &>>
+#
+# Anything we don't recognise (heredocs, ANSI-C $'...' quoting, control
+# constructs like `case`, etc.) raises _ParseError, which the caller turns
+# into a safe "ask" fallback. Missing-but-safe is the design: a parser bug
+# can never silently ALLOW a dangerous command — at worst it forces an
+# extra confirmation prompt.
+
+
+class _ParseError(Exception):
+    """Raised when the splitter encounters bash it cannot reason about."""
+
+
+def _skip_ws(s: str, i: int, end: int) -> int:
+    while i < end and s[i] in " \t":
+        i += 1
+    return i
+
+
+def _skip_single_quote(s: str, i: int, end: int) -> int:
+    """``i`` points at the opening ``'``. Returns position past the closing ``'``."""
+    j = i + 1
+    while j < end and s[j] != "'":
+        j += 1
+    if j >= end:
+        raise _ParseError("unterminated single quote")
+    return j + 1
+
+
+def _skip_backtick(s: str, i: int, end: int) -> int:
+    """``i`` points at opening `` ` ``. Returns position past closing `` ` ``."""
+    j = i + 1
+    while j < end and s[j] != "`":
+        if s[j] == "\\" and j + 1 < end:
+            j += 2
+        else:
+            j += 1
+    if j >= end:
+        raise _ParseError("unterminated backtick")
+    return j + 1
+
+
+def _skip_paren(s: str, i: int, end: int) -> int:
+    """``i`` points at the opening ``(``. Returns position past the matching ``)``.
+
+    Tracks quotes and nested constructs only enough to find the matching
+    paren. Does NOT record substitutions for collection — the caller is
+    expected to recursively process the inner span and discover them then.
+    """
+    depth = 1
+    j = i + 1
+    while j < end and depth > 0:
+        c = s[j]
+        if c == "'":
+            j = _skip_single_quote(s, j, end)
+        elif c == '"':
+            j = _skip_double_quote(s, j, end, None)
+        elif c == "`":
+            j = _skip_backtick(s, j, end)
+        elif c == "\\" and j + 1 < end:
+            j += 2
+        elif c == "$" and j + 1 < end and s[j + 1] == "(":
+            j = _skip_paren(s, j + 1, end)
+        elif c == "$" and j + 1 < end and s[j + 1] == "{":
+            j = _skip_brace(s, j + 1, end, None)
+        elif c == "(":
+            depth += 1
+            j += 1
+        elif c == ")":
+            depth -= 1
+            j += 1
+        else:
+            j += 1
+    if depth != 0:
+        raise _ParseError("unbalanced (")
+    return j
+
+
+def _skip_double_quote(
+    s: str, i: int, end: int, inner_subs: list[tuple[int, int]] | None
+) -> int:
+    """``i`` points at the opening ``"``. Returns position past the closing ``"``.
+
+    If ``inner_subs`` is given, any ``$(...)``, ``${...}``, or backtick
+    substitution found directly inside the string contributes its inner
+    span to the list (operators inside double-quoted strings are inert,
+    but substitutions are live).
+    """
+    j = i + 1
+    while j < end:
+        c = s[j]
+        if c == '"':
+            return j + 1
+        elif c == "\\" and j + 1 < end:
+            j += 2
+        elif c == "$" and j + 1 < end and s[j + 1] == "(":
+            inner_start = j + 2
+            j = _skip_paren(s, j + 1, end)
+            if inner_subs is not None:
+                inner_subs.append((inner_start, j - 1))
+        elif c == "$" and j + 1 < end and s[j + 1] == "{":
+            j = _skip_brace(s, j + 1, end, inner_subs)
+        elif c == "`":
+            inner_start = j + 1
+            j = _skip_backtick(s, j, end)
+            if inner_subs is not None:
+                inner_subs.append((inner_start, j - 1))
+        else:
+            j += 1
+    raise _ParseError("unterminated double quote")
+
+
+def _skip_brace(
+    s: str, i: int, end: int, inner_subs: list[tuple[int, int]] | None
+) -> int:
+    """``i`` points at the opening ``{`` of a parameter expansion. Returns
+    position past the matching ``}``. Records any substitutions inside.
+    """
+    depth = 1
+    j = i + 1
+    while j < end and depth > 0:
+        c = s[j]
+        if c == "\\" and j + 1 < end:
+            j += 2
+        elif c == "'":
+            j = _skip_single_quote(s, j, end)
+        elif c == '"':
+            j = _skip_double_quote(s, j, end, inner_subs)
+        elif c == "$" and j + 1 < end and s[j + 1] == "(":
+            inner_start = j + 2
+            j = _skip_paren(s, j + 1, end)
+            if inner_subs is not None:
+                inner_subs.append((inner_start, j - 1))
+        elif c == "$" and j + 1 < end and s[j + 1] == "{":
+            j = _skip_brace(s, j + 1, end, inner_subs)
+        elif c == "`":
+            inner_start = j + 1
+            j = _skip_backtick(s, j, end)
+            if inner_subs is not None:
+                inner_subs.append((inner_start, j - 1))
+        elif c == "{":
+            depth += 1
+            j += 1
+        elif c == "}":
+            depth -= 1
+            j += 1
+        else:
+            j += 1
+    if depth != 0:
+        raise _ParseError("unbalanced {")
+    return j
+
+
+def _split_range(
+    s: str, start: int, end: int, all_segments: list[tuple[int, int]]
+) -> None:
+    """Walk ``s[start:end]`` splitting on top-level command operators and
+    appending each command's ``(start, end)`` span to ``all_segments``.
+    Substitutions encountered are recursively processed so their inner
+    commands are also collected.
+    """
+    inner_subs: list[tuple[int, int]] = []
+    i = start
+    cmd_start = _skip_ws(s, start, end)
+
+    def emit(end_pos: int) -> None:
+        e = end_pos
+        while e > cmd_start and s[e - 1] in " \t":
+            e -= 1
+        if e > cmd_start:
+            all_segments.append((cmd_start, e))
+
+    while i < end:
+        c = s[i]
+
+        # --- Quoting ---
+        if c == "'":
+            i = _skip_single_quote(s, i, end)
+            continue
+        if c == '"':
+            i = _skip_double_quote(s, i, end, inner_subs)
+            continue
+        if c == "`":
+            inner_start = i + 1
+            i = _skip_backtick(s, i, end)
+            inner_subs.append((inner_start, i - 1))
+            continue
+
+        # --- Substitutions and groupings ---
+        if c == "$" and i + 1 < end and s[i + 1] == "(":
+            inner_start = i + 2
+            i = _skip_paren(s, i + 1, end)
+            inner_subs.append((inner_start, i - 1))
+            continue
+        if c == "$" and i + 1 < end and s[i + 1] == "{":
+            i = _skip_brace(s, i + 1, end, inner_subs)
+            continue
+        if c == "$" and i + 1 < end and s[i + 1] == "'":
+            # ANSI-C quoting $'...' has its own escape rules we don't model.
+            raise _ParseError("$'...' ANSI-C quoting not supported")
+        if c == "(":
+            inner_start = i + 1
+            i = _skip_paren(s, i, end)
+            inner_subs.append((inner_start, i - 1))
+            continue
+
+        # --- Heredocs are not supported (the body would need a separate
+        # scan that we don't implement). Force a safe ASK fallback. ---
+        if c == "<" and i + 1 < end and s[i + 1] == "<":
+            raise _ParseError("heredoc not supported")
+
+        # --- Process substitution <(...) and >(...) ---
+        if c in "<>" and i + 1 < end and s[i + 1] == "(":
+            inner_start = i + 2
+            i = _skip_paren(s, i + 1, end)
+            inner_subs.append((inner_start, i - 1))
+            continue
+
+        # --- Plain redirections (>file, <file, 2>&1, &>file, &>>file) ---
+        if c in "<>":
+            i += 1
+            # Append-form >> or fd-duplication >&N / <&N
+            if i < end and s[i] in "<>&":
+                i += 1
+            continue
+
+        # --- Escapes ---
+        if c == "\\" and i + 1 < end:
+            i += 2
+            continue
+
+        # --- Operators that separate commands ---
+        if c == "&":
+            if i + 1 < end and s[i + 1] == "&":
+                emit(i)
+                i += 2
+                cmd_start = _skip_ws(s, i, end)
+                continue
+            if i + 1 < end and s[i + 1] == ">":
+                # &> or &>> redirect (bash shorthand for >file 2>&1)
+                i += 2
+                if i < end and s[i] == ">":
+                    i += 1
+                continue
+            # bare & — backgrounding, acts as a separator
+            emit(i)
+            i += 1
+            cmd_start = _skip_ws(s, i, end)
+            continue
+
+        if c == "|":
+            if i + 1 < end and s[i + 1] == "|":
+                emit(i)
+                i += 2
+                cmd_start = _skip_ws(s, i, end)
+                continue
+            # |& is a pipe that also dup's stderr — same separator semantics
+            emit(i)
+            i += 1
+            if i < end and s[i] == "&":
+                i += 1
+            cmd_start = _skip_ws(s, i, end)
+            continue
+
+        if c == ";":
+            # ;; is a case terminator we don't support
+            if i + 1 < end and s[i + 1] == ";":
+                raise _ParseError(";; (case terminator) not supported")
+            emit(i)
+            i += 1
+            cmd_start = _skip_ws(s, i, end)
+            continue
+
+        if c == "\n":
+            emit(i)
+            i += 1
+            cmd_start = _skip_ws(s, i, end)
+            continue
+
+        # --- Anything else: ordinary command character ---
+        i += 1
+
+    emit(end)
+
+    # Recurse into substitution bodies — but only spans with content.
+    # Each recursive call will discover its own nested substitutions.
+    for a, b in inner_subs:
+        if a < b:
+            _split_range(s, a, b, all_segments)
+
+
+def extract_commands(command: str) -> list[str] | None:
+    """Split a bash command into the individual commands it would execute.
+
+    Returns:
+        * ``[]`` if the input is empty/whitespace.
+        * ``None`` if the input is malformed or uses unsupported syntax
+          (caller resolves this to a safe "ask" decision).
+        * Otherwise, a list of command strings — one for every simple
+          command found at any nesting level (top-level, inside
+          ``$(...)`` / `` `...` `` / ``<(...)`` / ``(...)`` subshells, and
+          inside double-quoted strings or ``${...}`` parameter expansion).
+
+    Each returned segment is sliced from the original input so quoting
+    and redirections are preserved exactly as written, which is what the
+    existing per-command regex rules expect.
+    """
+    if not command.strip():
+        return []
+    try:
+        spans: list[tuple[int, int]] = []
+        _split_range(command, 0, len(command), spans)
+    except _ParseError:
+        return None
+
+    seen: set[tuple[int, int]] = set()
+    out: list[str] = []
+    for a, b in spans:
+        if (a, b) in seen:
+            continue
+        seen.add((a, b))
+        out.append(command[a:b])
+    return out
+
+
+def _evaluate_segment(segment: str) -> tuple[str, Rule | None]:
+    """Evaluate a single segment through DENY -> ASK -> ALLOW.
+
+    Returns (decision, matched_rule) where decision is one of
+    'deny', 'ask', 'allow', 'unmatched'.
+    """
+    deny = match_deny(segment)
+    if deny:
+        return "deny", deny
+    ask = match_ask(segment)
+    if ask:
+        return "ask", ask
+    allow = match_allow(segment)
+    if allow:
+        return "allow", allow
+    return "unmatched", None
+
+
+def evaluate_command(
+    command: str,
+) -> tuple[Literal["deny", "ask", "allow", "llm"], str]:
+    """Evaluate a bash command by splitting it into segments and applying
+    DENY -> ASK -> ALLOW to each segment with strictest-wins aggregation.
+
+    Decision precedence (most-restrictive wins):
+        deny > ask > llm > allow
+
+    Returns (decision, reason). The reason is a human-readable string
+    suitable for logging. When decision is 'llm', the caller should invoke
+    the LLM judge with the original full command (not any segment).
+    """
+    segments = extract_commands(command)
+    if segments is None:
+        return "ask", "Unparseable bash; requires user confirmation"
+    if not segments:
+        return "allow", "Empty command"
+
+    deny_hit: Rule | None = None
+    ask_hit: Rule | None = None
+    has_unmatched = False
+    allow_names: list[str] = []
+    seen_allow: set[str] = set()
+
+    for segment in segments:
+        decision, rule = _evaluate_segment(segment)
+        if decision == "deny":
+            assert rule is not None
+            if deny_hit is None:
+                deny_hit = rule
+        elif decision == "ask":
+            assert rule is not None
+            if ask_hit is None:
+                ask_hit = rule
+        elif decision == "allow":
+            assert rule is not None
+            if rule.name not in seen_allow:
+                seen_allow.add(rule.name)
+                allow_names.append(rule.name)
+        else:
+            has_unmatched = True
+
+    if deny_hit is not None:
+        return "deny", f"Blocked by deny rule: {deny_hit.name}"
+    if ask_hit is not None:
+        return "ask", f"Matched ask rule: {ask_hit.name}"
+    if has_unmatched:
+        return "llm", ""
+    return "allow", f"Allowed by rules: {', '.join(allow_names)}"

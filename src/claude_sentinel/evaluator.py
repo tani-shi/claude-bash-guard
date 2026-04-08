@@ -64,28 +64,29 @@ def evaluate(hook_input: dict[str, Any]) -> tuple[str, str, str] | None:
 def _evaluate_bash(
     tool_input: dict[str, Any], hook_input: dict[str, Any]
 ) -> tuple[str, str, str]:
-    """Evaluate a Bash command: RULE_DENY -> RULE_ASK -> RULE_ALLOW -> LLM_JUDGE."""
+    """Evaluate a Bash command via segment-aware rule matching.
+
+    The command is split into individual segments using a real bash AST
+    (so compound commands using ``&&``, ``||``, ``;``, ``|``, ``$()``,
+    ``<()``, etc. are evaluated per-segment) and each segment is checked
+    against DENY -> ASK -> ALLOW with strictest-wins aggregation. If any
+    segment is unmatched by all rule sets, fall through to the LLM judge
+    with the full original command for context.
+    """
     command = tool_input.get("command", "")
 
-    # Deny rules
-    deny_match = rules.match_deny(command)
-    if deny_match:
-        return "deny", f"Blocked by deny rule: {deny_match.name}", "RULE_DENY"
+    decision, reason = rules.evaluate_command(command)
+    if decision == "deny":
+        return "deny", reason, "RULE_DENY"
+    if decision == "ask":
+        return "ask", reason, "RULE_ASK"
+    if decision == "allow":
+        return "allow", reason, "RULE_ALLOW"
 
-    # Ask rules (checked before allow for safety)
-    ask_match = rules.match_ask(command)
-    if ask_match:
-        return "ask", f"Matched ask rule: {ask_match.name}", "RULE_ASK"
-
-    # Allow rules
-    allow_match = rules.match_allow(command)
-    if allow_match:
-        return "allow", f"Allowed by rule: {allow_match.name}", "RULE_ALLOW"
-
-    # LLM judge
+    # decision == "llm": at least one segment was unmatched.
     cwd = hook_input.get("cwd", ".")
-    decision, reason = llm_judge.evaluate(command, cwd)
-    return decision, reason, "LLM_JUDGE"
+    llm_decision, llm_reason = llm_judge.evaluate(command, cwd)
+    return llm_decision, llm_reason, "LLM_JUDGE"
 
 
 def _evaluate_file(tool_input: dict[str, Any]) -> tuple[str, str, str]:
