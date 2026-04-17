@@ -28,7 +28,7 @@ command_regex = '''git\s+push\s+.*--force(?!-with-lease).*\b(main|master)\b'''
 
 [[rules]]
 name = "env-write"
-command_regex = '''(>|>>|tee\s+).*\.env(\s|$|\..*$)'''
+command_regex = '''(>|>>)\s*\.env(\s|$|\.)|tee\s+.*\.env(\s|$|\.)'''
 
 [[rules]]
 name = "gcloud-secrets-access"

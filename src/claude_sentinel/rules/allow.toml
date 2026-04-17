@@ -1,4 +1,8 @@
 [[rules]]
+name = "comment"
+command_regex = '''^\s*#'''
+
+[[rules]]
 name = "ls"
 command_regex = '''^\s*ls(\s|$)'''
 
@@ -51,12 +55,24 @@ name = "git-version"
 command_regex = '''^\s*git\s+--version\s*$'''
 
 [[rules]]
+name = "shell-constructs"
+command_regex = '''^\s*(for|while|if|case|do|done|then|else|elif|fi|esac)(\s|$)'''
+
+[[rules]]
+name = "pushd-popd"
+command_regex = '''^\s*(pushd|popd)(\s|$)'''
+
+[[rules]]
 name = "which-type"
 command_regex = '''^\s*(which|type|command\s+-v)\s+'''
 
 [[rules]]
 name = "date-uname"
 command_regex = '''^\s*(date|uname|whoami|hostname|id)\s*'''
+
+[[rules]]
+name = "zsh-run"
+command_regex = '''^\s*(zsh|bash|sh)\s+'''
 
 [[rules]]
 name = "python-run"
@@ -77,6 +93,10 @@ command_regex = '''^\s*bun\s+(run|test|build|install|add|remove|update|init|crea
 [[rules]]
 name = "npm-safe"
 command_regex = '''^\s*(npm|yarn|pnpm)\s+(install|ci|test|start|build|clean|lint|format|check|outdated|list|ls|info|view|show|explain|why|audit|fund|pack|init|create|exec|config|cache|doctor|prefix|root|search|completion|help|set|get|version)(\s|$)'''
+
+[[rules]]
+name = "npx-safe"
+command_regex = '''^\s*(npx|pnpx|bunx)\s+(prettier|eslint|tsc|biome|shadcn(@\S+)?|prisma|vitest|jest|mocha|playwright|cypress|tailwindcss|postcss|autoprefixer|next|vite|turbo|tsup|esbuild|rollup|webpack)(\s|$)'''
 
 [[rules]]
 name = "npm-run-safe"
@@ -100,7 +120,7 @@ command_regex = '''^\s*go\s+(build|run|test|mod|fmt|vet)(\s|$)'''
 
 [[rules]]
 name = "make-safe"
-command_regex = '''^\s*make(\s*$|\s+(all|build|test|check|lint|clean|install|fmt|format|docs|run|dev|debug|help|validate|type|generate|prisma|codegen|typecheck|diff)[\w-]*(\s|$))'''
+command_regex = '''^\s*make(\s*$|\s+(all|build|test|check|lint|clean|install|fmt|format|docs|run|dev|debug|help|validate|type|generate|prisma|codegen|typecheck|diff|start|stop|status|cli|web|zip)[\w-]*(\s|$))'''
 
 [[rules]]
 name = "mkdir"
@@ -199,6 +219,10 @@ name = "gog-deep-read"
 command_regex = '''^\s*gog\s+\S+\s+\S+\s+(get|list|search|status|find|space|opens|url|profile|roster)(\s|$)'''
 
 [[rules]]
+name = "sqlite3"
+command_regex = '''^\s*sqlite3\s+'''
+
+[[rules]]
 name = "pdftotext"
 command_regex = '''^\s*pdftotext(\s|$)'''
 
@@ -248,6 +272,18 @@ command_regex = '''^\s*aws\s+sts\s+get-caller-identity(\s|$)'''
 
 # --- macOS utilities ---
 [[rules]]
+name = "launchctl-read"
+command_regex = '''^\s*launchctl\s+(list|print|blame|dumpstate)(\s|$)'''
+
+[[rules]]
+name = "plutil-read"
+command_regex = '''^\s*plutil\s+(-p|-lint|-type|-extract|-convert)(\s|$)'''
+
+[[rules]]
+name = "sample"
+command_regex = '''^\s*sample\s+'''
+
+[[rules]]
 name = "defaults-read"
 command_regex = '''^\s*defaults\s+(read|export|domains|find)(\s|$)'''
 
@@ -296,7 +332,7 @@ command_regex = '''^\s*duti\s+(-x|-d|-l|--version)(\s|$)'''
 # --- claude-sentinel CLI (read) ---
 [[rules]]
 name = "claude-sentinel-read"
-command_regex = '''^\s*claude-sentinel\s+(log|test|rules|version)(\s|$)'''
+command_regex = '''^\s*claude-sentinel\s+(log|test|--test|rules|version)(\s|$)'''
 
 # --- Terraform read ---
 [[rules]]

@@ -130,7 +130,7 @@ wheels = [
 
 [[package]]
 name = "claude-sentinel"
-version = "2026.4.9"
+version = "2026.4.17"
 source = { editable = "." }
 dependencies = [
     { name = "claude-agent-sdk" },

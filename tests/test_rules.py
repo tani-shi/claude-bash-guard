@@ -205,9 +205,17 @@ class TestAllowRules:
         assert match_allow("pyright") is not None
         assert match_allow("shfmt -w .") is not None
 
-    def test_npx_not_allowed(self):
-        assert match_allow("npx prettier --check .") is None
-        assert match_allow("pnpx prettier --check .") is None
+    def test_npx_safe_allowed(self):
+        assert match_allow("npx prettier --check .") is not None
+        assert match_allow("pnpx prettier --check .") is not None
+        assert match_allow("npx tsc --noEmit") is not None
+        assert match_allow("npx eslint src/") is not None
+        assert match_allow("npx prisma generate") is not None
+        assert match_allow("bunx vitest run") is not None
+
+    def test_npx_unknown_not_allowed(self):
+        assert match_allow("npx unknown-package") is None
+        assert match_allow("npx some-script") is None
 
     def test_help_flag(self):
         assert match_allow("git --help") is not None

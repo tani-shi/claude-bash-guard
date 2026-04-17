@@ -56,7 +56,7 @@ command_regex = '''^\s*twine\s+upload(\s|$)'''
 # --- npx/pnpx/bunx execution (downloads & runs packages) ---
 [[rules]]
 name = "npx-execute"
-command_regex = '''^\s*(npx|pnpx|bunx)\s+'''
+command_regex = '''^\s*(npx|pnpx|bunx)\s+(?!(prettier|eslint|tsc|biome|shadcn(@\S+)?|prisma|vitest|jest|mocha|playwright|cypress|tailwindcss|postcss|autoprefixer|next|vite|turbo|tsup|esbuild|rollup|webpack)(\s|$))'''
 
 # --- uv mutation operations ---
 [[rules]]
@@ -157,7 +157,11 @@ command_regex = '''^\s*firebase\s+(login|logout)(\s|$)'''
 # --- Make with external-impact targets ---
 [[rules]]
 name = "make-publish-release"
-command_regex = '''^\s*make\s+(publish|release|push)(\s|$)'''
+command_regex = '''^\s*make\s+(publish|release|push)[\w-]*(\s|$)'''
+
+[[rules]]
+name = "make-upgrade"
+command_regex = '''^\s*make\s+upgrade[\w-]*(\s|$)'''
 
 # --- macOS preferences mutation ---
 [[rules]]
@@ -256,6 +260,18 @@ command_regex = '''^\s*osascript\s+'''
 [[rules]]
 name = "bun-x-execute"
 command_regex = '''^\s*bun\s+x(\s|$)'''
+
+[[rules]]
+name = "pkill-killall"
+command_regex = '''^\s*(pkill|killall|kill)\s+'''
+
+[[rules]]
+name = "launchctl-mutate"
+command_regex = '''^\s*launchctl\s+(load|unload|bootstrap|bootout|kickstart|kill|enable|disable|start|stop|remove|submit)(\s|$)'''
+
+[[rules]]
+name = "flashspace-mutate"
+command_regex = '''^\s*flashspace\s+(delete|add|set|create|update|remove)[\w-]*(\s|$)'''
 
 [[rules]]
 name = "xargs-destructive"
