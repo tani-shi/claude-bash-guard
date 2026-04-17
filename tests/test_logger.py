@@ -33,7 +33,9 @@ def _make_hook_input(command="ls -la", tool_name="Bash", session_id="sess1", cwd
 class TestLogEvaluation:
     def test_creates_file_and_writes_record(self, log_dir):
         hook_input = _make_hook_input("git status")
-        logger.log_evaluation(hook_input, "allow", "Allowed by rule: git_read_only", "RULE_ALLOW", 2.1)
+        logger.log_evaluation(
+            hook_input, "allow", "Allowed by rule: git_read_only", "RULE_ALLOW", 2.1
+        )
 
         log_file = log_dir / "eval.jsonl"
         assert log_file.exists()
@@ -51,7 +53,9 @@ class TestLogEvaluation:
 
     def test_read_tool_logs_file_path(self, log_dir):
         hook_input = _make_hook_input("/home/.env", tool_name="Read")
-        logger.log_evaluation(hook_input, "deny", "Blocked by read rule: env_files", "RULE_DENY", 0.5)
+        logger.log_evaluation(
+            hook_input, "deny", "Blocked by read rule: env_files", "RULE_DENY", 0.5
+        )
 
         log_file = log_dir / "eval.jsonl"
         rec = json.loads(log_file.read_text().strip())
@@ -131,9 +135,7 @@ class TestIterLogs:
 
     def test_basic_iteration(self, log_dir):
         for i in range(3):
-            logger.log_evaluation(
-                _make_hook_input(f"cmd{i}"), "allow", "ok", "RULE_ALLOW", 1.0
-            )
+            logger.log_evaluation(_make_hook_input(f"cmd{i}"), "allow", "ok", "RULE_ALLOW", 1.0)
 
         results = list(logger.iter_logs(log_dir))
         assert len(results) == 3
@@ -157,10 +159,13 @@ class TestIterLogs:
 
     def test_filter_by_since(self, log_dir):
         now = time.time()
-        self._write_records(log_dir, [
-            {"ts": "2020-01-01T00:00:00+00:00", "decision": "allow", "input": "old"},
-            {"ts": "2099-01-01T00:00:00+00:00", "decision": "allow", "input": "future"},
-        ])
+        self._write_records(
+            log_dir,
+            [
+                {"ts": "2020-01-01T00:00:00+00:00", "decision": "allow", "input": "old"},
+                {"ts": "2099-01-01T00:00:00+00:00", "decision": "allow", "input": "future"},
+            ],
+        )
 
         results = list(logger.iter_logs(log_dir, since=now))
         assert len(results) == 1
@@ -174,20 +179,26 @@ class TestIterLogs:
         assert len(results) == 3
 
     def test_newest_first_default(self, log_dir):
-        self._write_records(log_dir, [
-            {"ts": "2026-01-01T00:00:00+00:00", "decision": "allow", "input": "first"},
-            {"ts": "2026-01-02T00:00:00+00:00", "decision": "allow", "input": "second"},
-        ])
+        self._write_records(
+            log_dir,
+            [
+                {"ts": "2026-01-01T00:00:00+00:00", "decision": "allow", "input": "first"},
+                {"ts": "2026-01-02T00:00:00+00:00", "decision": "allow", "input": "second"},
+            ],
+        )
 
         results = list(logger.iter_logs(log_dir))
         assert results[0]["input"] == "second"
         assert results[1]["input"] == "first"
 
     def test_oldest_first(self, log_dir):
-        self._write_records(log_dir, [
-            {"ts": "2026-01-01T00:00:00+00:00", "decision": "allow", "input": "first"},
-            {"ts": "2026-01-02T00:00:00+00:00", "decision": "allow", "input": "second"},
-        ])
+        self._write_records(
+            log_dir,
+            [
+                {"ts": "2026-01-01T00:00:00+00:00", "decision": "allow", "input": "first"},
+                {"ts": "2026-01-02T00:00:00+00:00", "decision": "allow", "input": "second"},
+            ],
+        )
 
         results = list(logger.iter_logs(log_dir, newest_first=False))
         assert results[0]["input"] == "first"

@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 
 def _default_log_dir() -> Path:
@@ -59,7 +60,7 @@ def log_evaluation(
             input_value = json.dumps(tool_input, ensure_ascii=False)
 
         record = {
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
             "session_id": hook_input.get("session_id", ""),
             "tool_name": tool_name,
             "input": input_value,

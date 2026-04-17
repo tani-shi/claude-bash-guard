@@ -260,8 +260,20 @@ src/claude_sentinel/
 ## Development
 
 ```bash
-# Run tests
-uv run pytest tests/ -v
+# Install dev dependencies (ruff, pyright, pytest)
+make install
+
+# Run all checks (lint, format, typecheck, test)
+make check
+
+# Individual targets
+make lint          # Run linter (ruff check)
+make lint-fix      # Run linter with auto-fix
+make fmt           # Format code (ruff format)
+make fmt-check     # Check code formatting
+make typecheck     # Run type checker (pyright)
+make test          # Run tests (pytest)
+make clean         # Remove build artifacts and caches
 
 # Test a command locally
 uv run claude-sentinel --test "your-command-here"

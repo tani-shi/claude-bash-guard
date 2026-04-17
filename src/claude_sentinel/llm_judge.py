@@ -32,7 +32,7 @@ async def _evaluate_sdk(prompt: str) -> tuple[str, str]:
     async with asyncio.timeout(_SDK_TIMEOUT):
         async for message in query(prompt=prompt, options=options):
             if isinstance(message, ResultMessage):
-                result_text = message.result
+                result_text = message.result or ""
 
     return _parse_response(result_text.strip())
 
@@ -45,7 +45,7 @@ def evaluate(command: str, cwd: str) -> tuple[str, str]:
     """
     prompt = _load_prompt_template().format(command=command, cwd=cwd)
     last_error = ""
-    for attempt in range(_MAX_RETRIES):
+    for _attempt in range(_MAX_RETRIES):
         try:
             return asyncio.run(_evaluate_sdk(prompt))
         except TimeoutError:

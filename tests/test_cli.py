@@ -6,7 +6,6 @@ from unittest.mock import patch
 
 import pytest
 
-from claude_sentinel import logger
 from claude_sentinel.cli import main
 
 
@@ -136,7 +135,7 @@ class TestLogSubcommand:
         main(["--test", "ls"])
         main(["--test", "pwd"])
 
-        captured_setup = capsys.readouterr()  # Clear buffer
+        capsys.readouterr()  # Clear buffer
 
         main(["log"])
         out = capsys.readouterr().out
@@ -151,7 +150,7 @@ class TestLogSubcommand:
         main(["log", "-n", "2"])
         out = capsys.readouterr().out
         # Each record is 2 lines
-        lines = [l for l in out.strip().split("\n") if l]
+        lines = [line for line in out.strip().split("\n") if line]
         assert len(lines) == 4  # 2 records * 2 lines each
 
     def test_log_json_output(self, capsys, log_dir):
@@ -171,7 +170,7 @@ class TestLogSubcommand:
 
         main(["log", "--decision", "deny", "--json"])
         out = capsys.readouterr().out
-        lines = [l for l in out.strip().split("\n") if l]
+        lines = [line for line in out.strip().split("\n") if line]
         assert len(lines) == 1
         rec = json.loads(lines[0])
         assert rec["decision"] == "deny"
@@ -183,7 +182,7 @@ class TestLogSubcommand:
 
         main(["log", "--stage", "RULE_DENY", "--json"])
         out = capsys.readouterr().out
-        lines = [l for l in out.strip().split("\n") if l]
+        lines = [line for line in out.strip().split("\n") if line]
         assert len(lines) == 1
         rec = json.loads(lines[0])
         assert rec["stage"] == "RULE_DENY"
@@ -195,8 +194,8 @@ class TestLogSubcommand:
 
         main(["log", "--tail", "--json"])
         out = capsys.readouterr().out
-        lines = [l for l in out.strip().split("\n") if l]
-        recs = [json.loads(l) for l in lines]
+        lines = [line for line in out.strip().split("\n") if line]
+        recs = [json.loads(line) for line in lines]
         # Tail = oldest first; ls was logged before pwd
         assert recs[0]["input"] == "ls"
         assert recs[1]["input"] == "pwd"
@@ -221,7 +220,7 @@ class TestLogSubcommand:
 
         # Since 0 seconds ago should exclude everything
         main(["log", "--since", "0s", "--json"])
-        out = capsys.readouterr().out.strip()
+        capsys.readouterr().out.strip()
         # 0s means time.time() - 0 = now, so records just written should be before "now"
         # Actually records just written will have ts very close to now, may or may not match
         # This just tests that --since doesn't crash
@@ -252,7 +251,7 @@ class TestRulesSubcommand:
     def test_rules_json(self, capsys):
         main(["rules", "--json"])
         out = capsys.readouterr().out
-        lines = [l for l in out.strip().split("\n") if l]
+        lines = [line for line in out.strip().split("\n") if line]
         assert len(lines) > 0
         for line in lines:
             rec = json.loads(line)

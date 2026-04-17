@@ -216,9 +216,7 @@ def _skip_paren(s: str, i: int, end: int) -> int:
     return j
 
 
-def _skip_double_quote(
-    s: str, i: int, end: int, inner_subs: list[tuple[int, int]] | None
-) -> int:
+def _skip_double_quote(s: str, i: int, end: int, inner_subs: list[tuple[int, int]] | None) -> int:
     """``i`` points at the opening ``"``. Returns position past the closing ``"``.
 
     If ``inner_subs`` is given, any ``$(...)``, ``${...}``, or backtick
@@ -250,9 +248,7 @@ def _skip_double_quote(
     raise _ParseError("unterminated double quote")
 
 
-def _skip_brace(
-    s: str, i: int, end: int, inner_subs: list[tuple[int, int]] | None
-) -> int:
+def _skip_brace(s: str, i: int, end: int, inner_subs: list[tuple[int, int]] | None) -> int:
     """``i`` points at the opening ``{`` of a parameter expansion. Returns
     position past the matching ``}``. Records any substitutions inside.
     """
@@ -291,9 +287,7 @@ def _skip_brace(
     return j
 
 
-def _split_range(
-    s: str, start: int, end: int, all_segments: list[tuple[int, int]]
-) -> None:
+def _split_range(s: str, start: int, end: int, all_segments: list[tuple[int, int]]) -> None:
     """Walk ``s[start:end]`` splitting on top-level command operators and
     appending each command's ``(start, end)`` span to ``all_segments``.
     Substitutions encountered are recursively processed so their inner

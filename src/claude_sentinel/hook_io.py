@@ -9,9 +9,8 @@ from typing import Any, TextIO
 
 def read_input(stdin: TextIO | None = None) -> dict[str, Any]:
     """Read and parse JSON from stdin."""
-    if stdin is None:
-        stdin = sys.stdin
-    raw = stdin.read()
+    stream = stdin if stdin is not None else sys.stdin
+    raw = stream.read()
     return json.loads(raw)
 
 
@@ -26,8 +25,7 @@ def write_output(
       "decision": {"behavior": "...", "message": "..."}}}
     - "ask": no output (passthrough, exit 0)
     """
-    if stdout is None:
-        stdout = sys.stdout
+    stream = stdout if stdout is not None else sys.stdout
     if decision == "ask":
         # Passthrough: no output, exit 0
         return
@@ -40,5 +38,5 @@ def write_output(
             },
         }
     }
-    json.dump(output, stdout)
-    stdout.write("\n")
+    json.dump(output, stream)
+    stream.write("\n")

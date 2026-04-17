@@ -5,7 +5,8 @@ from __future__ import annotations
 from fnmatch import fnmatch
 from typing import Any
 
-from claude_sentinel import llm_judge, rule_engine as rules
+from claude_sentinel import llm_judge
+from claude_sentinel import rule_engine as rules
 
 # Read-only tools with no side effects: auto-allow without evaluation.
 # Supports fnmatch glob patterns (e.g. "mcp__*__slack_read_*").
@@ -61,9 +62,7 @@ def evaluate(hook_input: dict[str, Any]) -> tuple[str, str, str] | None:
         return None
 
 
-def _evaluate_bash(
-    tool_input: dict[str, Any], hook_input: dict[str, Any]
-) -> tuple[str, str, str]:
+def _evaluate_bash(tool_input: dict[str, Any], hook_input: dict[str, Any]) -> tuple[str, str, str]:
     """Evaluate a Bash command via segment-aware rule matching.
 
     The command is split into individual segments using a real bash AST

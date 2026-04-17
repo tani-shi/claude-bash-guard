@@ -127,9 +127,7 @@ def uninstall(settings_path: Path | None = None) -> str:
     filtered = [
         entry
         for entry in existing
-        if not any(
-            hook.get("command") == "claude-sentinel" for hook in entry.get("hooks", [])
-        )
+        if not any(hook.get("command") == "claude-sentinel" for hook in entry.get("hooks", []))
     ]
     hooks_removed = len(filtered) != len(existing)
     if hooks_removed:

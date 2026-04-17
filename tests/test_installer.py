@@ -68,7 +68,8 @@ class TestInstallPermissions:
         install(settings_file)
         settings = json.loads(settings_file.read_text())
         assert managed["deny"] == []
-        assert "deny" not in settings.get("permissions", {}) or settings["permissions"]["deny"] == []
+        perms = settings.get("permissions", {})
+        assert "deny" not in perms or perms["deny"] == []
 
     def test_install_adds_permissions_allow(self, settings_file, managed):
         install(settings_file)
@@ -121,17 +122,13 @@ class TestInstallPermissions:
                         "Notification": [
                             {
                                 "matcher": "*",
-                                "hooks": [
-                                    {"type": "command", "command": "notify-send"}
-                                ],
+                                "hooks": [{"type": "command", "command": "notify-send"}],
                             }
                         ],
                         "Stop": [
                             {
                                 "matcher": "*",
-                                "hooks": [
-                                    {"type": "command", "command": "cleanup-script"}
-                                ],
+                                "hooks": [{"type": "command", "command": "cleanup-script"}],
                             }
                         ],
                     }

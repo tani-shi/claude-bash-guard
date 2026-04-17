@@ -7,9 +7,9 @@ import json
 import sys
 import time
 from pathlib import Path
+from typing import IO
 
-from claude_sentinel import evaluator, hook_io, installer, logger
-from claude_sentinel import rule_engine
+from claude_sentinel import evaluator, hook_io, installer, logger, rule_engine
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -78,9 +78,7 @@ def main(argv: list[str] | None = None) -> None:
         choices=["RULE_DENY", "RULE_ALLOW", "RULE_ASK", "LLM_JUDGE"],
         help="Filter by stage",
     )
-    log_parser.add_argument(
-        "--since", help="Show records since (e.g. 1h, 30m, 2d)"
-    )
+    log_parser.add_argument("--since", help="Show records since (e.g. 1h, 30m, 2d)")
     log_parser.add_argument(
         "--json", action="store_true", dest="json_output", help="Raw JSON Lines output"
     )
@@ -272,6 +270,7 @@ def _run_log(args: argparse.Namespace) -> None:
 def _follow_log(args: argparse.Namespace) -> None:
     """Follow the log file in real-time."""
     log_path = logger.get_log_dir() / logger.LOG_FILENAME
+    f: IO[str] | None = None
     try:
         log_path.parent.mkdir(parents=True, exist_ok=True)
         # Start from end of file if it exists
@@ -304,7 +303,7 @@ def _follow_log(args: argparse.Namespace) -> None:
     except KeyboardInterrupt:
         pass
     finally:
-        if "f" in locals():
+        if f is not None:
             f.close()
 
 
@@ -339,13 +338,11 @@ def _parse_since(value: str) -> float:
 
     unit = value[-1].lower()
     if unit not in units:
-        raise argparse.ArgumentTypeError(
-            f"Invalid time unit '{unit}'. Use s, m, h, or d."
-        )
+        raise argparse.ArgumentTypeError(f"Invalid time unit '{unit}'. Use s, m, h, or d.")
     try:
         amount = float(value[:-1])
-    except ValueError:
-        raise argparse.ArgumentTypeError(f"Invalid number in '{value}'")
+    except ValueError as err:
+        raise argparse.ArgumentTypeError(f"Invalid number in '{value}'") from err
 
     return time.time() - (amount * units[unit])
 
