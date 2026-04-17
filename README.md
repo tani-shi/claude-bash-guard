@@ -230,6 +230,28 @@ claude-sentinel install    # Add hooks to ~/.claude/settings.json
 claude-sentinel uninstall  # Remove hooks from ~/.claude/settings.json
 ```
 
+### Analyze logs
+
+Aggregate logged command patterns to find what is falling through to `LLM_JUDGE` or hitting `RULE_ASK` most often. No LLM call.
+
+```bash
+claude-sentinel analyze                        # top 20 uncovered patterns from the last 30 days
+claude-sentinel analyze --since 7d -n 50       # last 7 days, top 50
+claude-sentinel analyze --stage LLM_JUDGE      # only LLM_JUDGE fallthroughs
+claude-sentinel analyze --include-covered      # also show patterns existing rules already match
+claude-sentinel analyze --json                 # JSON Lines for scripting
+```
+
+### Suggest rules
+
+Ask an LLM (Sonnet 4.6) to propose ALLOW/ASK `[[rules]]` candidates for the uncovered patterns. Output is TOML fragments ready for human review before pasting into `allow.toml` / `ask.toml`.
+
+```bash
+claude-sentinel suggest                        # top 20 uncovered patterns → TOML suggestions
+claude-sentinel suggest --since 7d -n 10       # narrower window
+claude-sentinel suggest --include-covered      # re-suggest even for patterns already covered
+```
+
 ## LLM judge (LLM_JUDGE)
 
 When a command matches neither deny, allow, nor ask rules, `claude-sentinel` invokes:
@@ -275,9 +297,24 @@ make typecheck     # Run type checker (pyright)
 make test          # Run tests (pytest)
 make clean         # Remove build artifacts and caches
 
+# Rule maintenance
+make analyze-logs  # Rank uncovered command patterns from recent logs
+make suggest-rules # Ask Sonnet 4.6 for TOML rule candidates
+make update-rules  # Run analyze-logs then suggest-rules
+
 # Test a command locally
 uv run claude-sentinel --test "your-command-here"
 ```
+
+### Rule maintenance workflow
+
+When `LLM_JUDGE` fallthroughs pile up in the evaluation log, use the built-in analyzer + LLM suggester to propose new `allow.toml` / `ask.toml` entries:
+
+1. `make analyze-logs` — see which command shapes are falling through most often (no LLM call).
+2. `make suggest-rules` — Sonnet 4.6 proposes `[[rules]]` TOML fragments for those patterns.
+3. **Human review**: copy the relevant fragments into `src/claude_sentinel/rules/allow.toml` or `ask.toml`. The suggester never writes to these files directly.
+4. `make check` — ensure the new regexes don't regress existing tests.
+5. Add a test case in `tests/test_rules.py` for the new pattern (mirrors the workflow that produced commit `11aea10`).
 
 Requires Python 3.11+ (uses `tomllib` from the standard library). The only runtime dependency is `claude-agent-sdk` (used by the LLM judge stage); the rule engine and the bash splitter have zero external dependencies.
 

@@ -1,0 +1,59 @@
+You maintain TOML regex rules for claude-sentinel, a Claude Code safety hook
+that evaluates shell commands before execution.
+
+Existing rule files:
+- allow.toml: auto-approved commands (safe local development only)
+- ask.toml:   commands that require human confirmation (destructive or external impact)
+- deny.toml:  always-blocked commands (dangerous, never auto-allow)
+
+Each rule entry has this shape:
+
+    [[rules]]
+    name = "descriptive-kebab-case-name"
+    command_regex = '''^prefix( |$)'''
+
+Patterns are Python `re.search` regexes applied per-shell-segment. Anchor
+with `^` when you intend to match the command head; use `( |$)` (with a
+preceding space) to avoid false prefix matches (e.g. "git" matching "github").
+
+Classification guidance:
+- ALLOW when the command is clearly safe for local development with no
+  external impact: read operations, pure local mutations in scratch dirs,
+  dev-tool invocations with well-known safe subcommands (e.g. "prettier",
+  "tsc", "eslint").
+- ASK when the command is destructive, mutates shared state, reaches
+  outside the local machine (network mutations, package publish, cloud
+  deploys), or has ambiguous intent.
+- DENY is reserved for commands that are unambiguously dangerous. Do NOT
+  suggest new DENY rules in this task — flag them in the rationale and
+  leave them to human review.
+
+Prefer conservative regexes: it is better to require one extra confirmation
+prompt than to silently allow a risky command. When unsure, suggest ASK.
+
+The following command patterns were observed in the log with decision="ask"
+but no existing rule matched, so each fell through to the slow LLM_JUDGE
+stage (~2-5s per invocation). Suggest rules that would cover them.
+
+Patterns (ranked by frequency; tool_name, count, representative samples):
+
+{ranking_table}
+
+For each pattern you cover, emit one `[[rules]]` entry in the appropriate
+section below. Skip patterns you cannot safely classify. Omit sections
+that end up empty.
+
+Output format (exactly two sections, in this order):
+
+# --- allow.toml additions ---
+[[rules]]
+name = "..."
+command_regex = '''...'''
+
+# --- ask.toml additions ---
+[[rules]]
+name = "..."
+command_regex = '''...'''
+
+After the TOML sections, add a short "## Notes" block with one-line
+rationales for each suggested rule and any patterns you skipped.

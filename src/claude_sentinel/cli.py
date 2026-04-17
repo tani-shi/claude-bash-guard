@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import IO
 
-from claude_sentinel import evaluator, hook_io, installer, logger, rule_engine
+from claude_sentinel import analyzer, evaluator, hook_io, installer, logger, rule_engine, suggester
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -92,6 +92,34 @@ def main(argv: list[str] | None = None) -> None:
         "--path", action="store_true", help="Print log directory path and exit"
     )
 
+    # analyze subcommand
+    analyze_parser = subparsers.add_parser(
+        "analyze", help="Aggregate logged command patterns to inform rule updates"
+    )
+    _add_analysis_filters(analyze_parser, default_limit=20)
+    analyze_parser.add_argument(
+        "--include-covered",
+        action="store_true",
+        help="Also show patterns already matched by existing rules",
+    )
+    analyze_parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="JSON Lines output",
+    )
+
+    # suggest subcommand
+    suggest_parser = subparsers.add_parser(
+        "suggest", help="Ask the LLM to propose TOML rule candidates from logged patterns"
+    )
+    _add_analysis_filters(suggest_parser, default_limit=20)
+    suggest_parser.add_argument(
+        "--include-covered",
+        action="store_true",
+        help="Include patterns already matched by existing rules",
+    )
+
     args = parser.parse_args(argv)
 
     if args.subcommand == "install":
@@ -112,6 +140,14 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.subcommand == "log":
         _run_log(args)
+        return
+
+    if args.subcommand == "analyze":
+        _run_analyze(args)
+        return
+
+    if args.subcommand == "suggest":
+        _run_suggest(args)
         return
 
     if args.test:
@@ -345,6 +381,96 @@ def _parse_since(value: str) -> float:
         raise argparse.ArgumentTypeError(f"Invalid number in '{value}'") from err
 
     return time.time() - (amount * units[unit])
+
+
+def _add_analysis_filters(parser: argparse.ArgumentParser, *, default_limit: int) -> None:
+    """Shared filter options for analyze/suggest subcommands."""
+    parser.add_argument(
+        "-n",
+        type=int,
+        default=default_limit,
+        dest="limit",
+        help=f"Top N patterns to consider (default: {default_limit})",
+    )
+    parser.add_argument(
+        "--decision",
+        default="ask",
+        choices=["allow", "deny", "ask"],
+        help='Filter by decision (default: "ask")',
+    )
+    parser.add_argument(
+        "--stage",
+        choices=["RULE_DENY", "RULE_ALLOW", "RULE_ASK", "LLM_JUDGE"],
+        help="Filter by stage",
+    )
+    parser.add_argument(
+        "--since",
+        default="30d",
+        help="Relative time window (e.g. 1h, 7d, 30d). Default: 30d",
+    )
+
+
+def _collect_patterns(args: argparse.Namespace) -> list:
+    """Apply the shared filters and return ranked pattern summaries."""
+    since_ts = _parse_since(args.since) if args.since else None
+    return analyzer.summarize(
+        since=since_ts,
+        decision=args.decision,
+        stage=args.stage,
+        limit=args.limit,
+    )
+
+
+def _run_analyze(args: argparse.Namespace) -> None:
+    patterns = _collect_patterns(args)
+    if not args.include_covered:
+        visible = [p for p in patterns if not p.covered_by]
+    else:
+        visible = patterns
+
+    if args.json_output:
+        for p in visible:
+            print(
+                json.dumps(
+                    {
+                        "key": p.key,
+                        "tool_name": p.tool_name,
+                        "count": p.count,
+                        "stages": p.stages,
+                        "samples": p.samples,
+                        "covered_by": p.covered_by,
+                    },
+                    ensure_ascii=False,
+                )
+            )
+        return
+
+    if not visible:
+        print("No matching patterns.")
+        return
+
+    covered_count = sum(1 for p in patterns if p.covered_by)
+    print(f"Top {len(visible)} uncovered patterns (decision={args.decision}, since={args.since}):")
+    print()
+    print(f"{'Rank':<5} {'Count':<6} {'Tool':<10} {'Stage':<20} Pattern / Samples")
+    for rank, p in enumerate(visible, start=1):
+        top_stage = max(p.stages.items(), key=lambda kv: kv[1])[0] if p.stages else ""
+        print(f"{rank:<5} {p.count:<6} {p.tool_name:<10} {top_stage:<20} {p.key}")
+        for sample in p.samples:
+            print(f"{'':<43} {sample}")
+    if not args.include_covered and covered_count:
+        print()
+        print(f"({covered_count} patterns already covered by existing rules; hidden.)")
+
+
+def _run_suggest(args: argparse.Namespace) -> None:
+    patterns = _collect_patterns(args)
+    if not patterns:
+        print("# No patterns matched the filters.")
+        return
+
+    output = suggester.suggest(patterns, skip_covered=not args.include_covered)
+    print(output)
 
 
 if __name__ == "__main__":
