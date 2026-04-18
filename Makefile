@@ -38,4 +38,16 @@ analyze-logs: ## Summarize frequently-asked log entries (no LLM call)
 suggest-rules: ## Generate ALLOW/ASK rule candidates via LLM (Sonnet 4.6)
 	uv run claude-sentinel suggest --since 30d -n 20
 
-update-rules: analyze-logs suggest-rules ## Analyze logs then suggest rules in one go
+SUGGESTION_CACHE := /tmp/claude-sentinel-last-suggestion.txt
+
+update-rules: analyze-logs ## Suggest rules, append to TOML files, then show git diff for review
+	@echo ""
+	@echo "--- generating suggestions and applying ---"
+	@uv run claude-sentinel suggest --since 30d -n 20 | tee $(SUGGESTION_CACHE) | uv run claude-sentinel apply
+	@echo ""
+	@echo "Raw LLM output saved to $(SUGGESTION_CACHE) (for debugging)"
+	@echo ""
+	@echo "--- changes to src/claude_sentinel/rules/ ---"
+	@git diff --stat src/claude_sentinel/rules/ || true
+	@echo ""
+	@echo "Review the full diff: git diff src/claude_sentinel/rules/"

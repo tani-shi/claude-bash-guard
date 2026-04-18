@@ -244,12 +244,29 @@ claude-sentinel analyze --json                 # JSON Lines for scripting
 
 ### Suggest rules
 
-Ask an LLM (Sonnet 4.6) to propose ALLOW/ASK `[[rules]]` candidates for the uncovered patterns. Output is TOML fragments ready for human review before pasting into `allow.toml` / `ask.toml`.
+Ask an LLM (Sonnet 4.6) to propose ALLOW/ASK `[[rules]]` candidates for the uncovered patterns. Output is TOML fragments on stdout (progress on stderr).
 
 ```bash
 claude-sentinel suggest                        # top 20 uncovered patterns → TOML suggestions
 claude-sentinel suggest --since 7d -n 10       # narrower window
 claude-sentinel suggest --include-covered      # re-suggest even for patterns already covered
+claude-sentinel suggest --quiet                # suppress stderr progress lines
+```
+
+### Apply suggestions
+
+Append validated rules from `suggest` output to `allow.toml` / `ask.toml`. Reads stdin (or `--input FILE`), validates each entry (regex compiles, name is not a duplicate), and appends a timestamped block. `deny.toml` is never written to automatically — proposed DENY entries are reported and skipped.
+
+```bash
+claude-sentinel suggest | claude-sentinel apply             # pipeline
+claude-sentinel apply --input suggestions.txt               # file input
+claude-sentinel apply --dry-run < suggestions.txt           # validate only
+```
+
+After applying, review the diff before committing:
+
+```bash
+git diff src/claude_sentinel/rules/
 ```
 
 ## LLM judge (LLM_JUDGE)
@@ -299,8 +316,8 @@ make clean         # Remove build artifacts and caches
 
 # Rule maintenance
 make analyze-logs  # Rank uncovered command patterns from recent logs
-make suggest-rules # Ask Sonnet 4.6 for TOML rule candidates
-make update-rules  # Run analyze-logs then suggest-rules
+make suggest-rules # Ask Sonnet 4.6 for TOML rule candidates (stdout only)
+make update-rules  # Analyze + suggest + apply; prints git diff for review
 
 # Test a command locally
 uv run claude-sentinel --test "your-command-here"
@@ -308,13 +325,21 @@ uv run claude-sentinel --test "your-command-here"
 
 ### Rule maintenance workflow
 
-When `LLM_JUDGE` fallthroughs pile up in the evaluation log, use the built-in analyzer + LLM suggester to propose new `allow.toml` / `ask.toml` entries:
+When `LLM_JUDGE` fallthroughs pile up in the evaluation log, use the built-in analyzer + LLM suggester to refresh `allow.toml` / `ask.toml`:
 
-1. `make analyze-logs` — see which command shapes are falling through most often (no LLM call).
-2. `make suggest-rules` — Sonnet 4.6 proposes `[[rules]]` TOML fragments for those patterns.
-3. **Human review**: copy the relevant fragments into `src/claude_sentinel/rules/allow.toml` or `ask.toml`. The suggester never writes to these files directly.
-4. `make check` — ensure the new regexes don't regress existing tests.
-5. Add a test case in `tests/test_rules.py` for the new pattern (mirrors the workflow that produced commit `11aea10`).
+1. `make update-rules` — aggregates the log, asks Sonnet 4.6 for rule candidates, appends ALLOW/ASK entries to the TOML files, and prints the `git diff --stat`.
+2. **Human review**: `git diff src/claude_sentinel/rules/` — inspect every new `[[rules]]` block. Revert any you disagree with (`git checkout -- <file>`).
+3. `make check` — ensure the new regexes don't regress existing tests.
+4. Optionally add targeted assertions in `tests/test_rules.py` for important new patterns (mirrors the workflow that produced commit `11aea10`).
+5. Commit the approved changes.
+
+Separate steps are available if you want more control:
+
+- `make analyze-logs` — ranked pattern report only (no LLM call, no writes).
+- `make suggest-rules` — suggestions on stdout, no writes.
+- `claude-sentinel apply --dry-run` — validate a saved suggestion file without touching TOML.
+
+DENY rule additions are never applied automatically. If the LLM proposes a DENY entry it is surfaced in the `[apply]` output and must be added by hand.
 
 Requires Python 3.11+ (uses `tomllib` from the standard library). The only runtime dependency is `claude-agent-sdk` (used by the LLM judge stage); the rule engine and the bash splitter have zero external dependencies.
 

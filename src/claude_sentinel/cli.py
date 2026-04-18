@@ -9,7 +9,16 @@ import time
 from pathlib import Path
 from typing import IO
 
-from claude_sentinel import analyzer, evaluator, hook_io, installer, logger, rule_engine, suggester
+from claude_sentinel import (
+    analyzer,
+    applier,
+    evaluator,
+    hook_io,
+    installer,
+    logger,
+    rule_engine,
+    suggester,
+)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -119,6 +128,27 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Include patterns already matched by existing rules",
     )
+    suggest_parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress progress output on stderr",
+    )
+
+    # apply subcommand
+    apply_parser = subparsers.add_parser(
+        "apply",
+        help="Append new ALLOW/ASK rules from suggest output to rules/*.toml",
+    )
+    apply_parser.add_argument(
+        "--input",
+        metavar="FILE",
+        help="Read suggestions from FILE (default: stdin)",
+    )
+    apply_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and report without writing",
+    )
 
     args = parser.parse_args(argv)
 
@@ -148,6 +178,10 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.subcommand == "suggest":
         _run_suggest(args)
+        return
+
+    if args.subcommand == "apply":
+        _run_apply(args)
         return
 
     if args.test:
@@ -422,6 +456,11 @@ def _collect_patterns(args: argparse.Namespace) -> list:
 
 
 def _run_analyze(args: argparse.Namespace) -> None:
+    print(
+        f"[analyze] scanning logs: decision={args.decision} since={args.since} top={args.limit}",
+        file=sys.stderr,
+        flush=True,
+    )
     patterns = _collect_patterns(args)
     if not args.include_covered:
         visible = [p for p in patterns if not p.covered_by]
@@ -450,26 +489,89 @@ def _run_analyze(args: argparse.Namespace) -> None:
         return
 
     covered_count = sum(1 for p in patterns if p.covered_by)
-    print(f"Top {len(visible)} uncovered patterns (decision={args.decision}, since={args.since}):")
+    header = (
+        f"Top {len(visible)} uncovered patterns (decision={args.decision}, since={args.since})"
+    )
+    print(header)
     print()
-    print(f"{'Rank':<5} {'Count':<6} {'Tool':<10} {'Stage':<20} Pattern / Samples")
-    for rank, p in enumerate(visible, start=1):
-        top_stage = max(p.stages.items(), key=lambda kv: kv[1])[0] if p.stages else ""
-        print(f"{rank:<5} {p.count:<6} {p.tool_name:<10} {top_stage:<20} {p.key}")
-        for sample in p.samples:
-            print(f"{'':<43} {sample}")
+    for p in visible:
+        top_stage = max(p.stages.items(), key=lambda kv: kv[1])[0] if p.stages else "-"
+        # Pick the shortest sample — the least decorated, most representative shape.
+        sample = min(p.samples, key=len) if p.samples else ""
+        print(f"  {p.count:>3}x  [{p.tool_name}/{top_stage}]  {p.key}")
+        if sample and sample != p.key:
+            print(f"        {_truncate(sample, 88)}")
     if not args.include_covered and covered_count:
         print()
-        print(f"({covered_count} patterns already covered by existing rules; hidden.)")
+        print(f"(+{covered_count} covered by existing rules; hidden.)")
+
+
+def _truncate(s: str, limit: int) -> str:
+    return s if len(s) <= limit else s[: limit - 1] + "\u2026"
+
+
+def _run_apply(args: argparse.Namespace) -> None:
+    if args.input:
+        text = Path(args.input).read_text(encoding="utf-8")
+    else:
+        text = sys.stdin.read()
+
+    if not text.strip():
+        print("[apply] empty input; nothing to do.", file=sys.stderr, flush=True)
+        return
+
+    print(f"[apply] read {len(text)} chars of input", file=sys.stderr, flush=True)
+    result = applier.apply(text, dry_run=args.dry_run)
+    verb = "Would add" if args.dry_run else "Added"
+    for kind, names in sorted(result.added.items()):
+        if names:
+            print(
+                f"[apply] {verb} {len(names)} rule(s) to {kind}.toml: {', '.join(names)}",
+                file=sys.stderr,
+                flush=True,
+            )
+    for kind, skipped in sorted(result.skipped.items()):
+        for name, reason in skipped:
+            print(
+                f"[apply] skipped {kind}:{name} ({reason})",
+                file=sys.stderr,
+                flush=True,
+            )
+
+    if result.total_added == 0 and result.total_skipped == 0:
+        print(
+            "[apply] no allow/ask/deny section markers found in input. "
+            "Expected lines like '# --- allow.toml additions ---'.",
+            file=sys.stderr,
+            flush=True,
+        )
+        return
+
+    if not args.dry_run and result.total_added:
+        print(
+            f"[apply] wrote {result.total_added} rule(s). "
+            "Review with: git diff src/claude_sentinel/rules/",
+            file=sys.stderr,
+            flush=True,
+        )
 
 
 def _run_suggest(args: argparse.Namespace) -> None:
+    print(
+        f"[suggest] scanning logs: decision={args.decision} since={args.since} top={args.limit}",
+        file=sys.stderr,
+        flush=True,
+    )
     patterns = _collect_patterns(args)
     if not patterns:
         print("# No patterns matched the filters.")
         return
 
-    output = suggester.suggest(patterns, skip_covered=not args.include_covered)
+    output = suggester.suggest(
+        patterns,
+        skip_covered=not args.include_covered,
+        verbose=not args.quiet,
+    )
     print(output)
 
 

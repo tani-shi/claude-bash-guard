@@ -40,20 +40,36 @@ Patterns (ranked by frequency; tool_name, count, representative samples):
 {ranking_table}
 
 For each pattern you cover, emit one `[[rules]]` entry in the appropriate
-section below. Skip patterns you cannot safely classify. Omit sections
-that end up empty.
+section below. Skip patterns you cannot safely classify.
 
-Output format (exactly two sections, in this order):
+STRICT OUTPUT FORMAT — your response is piped directly into a parser.
+Follow these rules exactly:
+
+1. Your FIRST line of output MUST be `# --- allow.toml additions ---`.
+   Do not output any preamble, thinking, or explanation before it.
+2. Always include BOTH section headers (`allow.toml additions` first, then
+   `ask.toml additions`), even if one section has no rules. A section may
+   contain zero `[[rules]]` blocks, but the header must still appear.
+3. Each `[[rules]]` block must have both `name = "..."` (double-quoted)
+   and `command_regex = '''...'''` (triple-single-quoted).
+4. After the two TOML sections, output `## Notes` followed by one-line
+   rationales (one bullet per suggested rule, and one per skipped pattern
+   with a short reason).
+5. Do NOT emit a `# --- deny.toml additions ---` section — flag DENY
+   candidates in the Notes section instead.
+
+Skeleton (fill in the TOML blocks):
 
 # --- allow.toml additions ---
 [[rules]]
-name = "..."
-command_regex = '''...'''
+name = "example-allow"
+command_regex = '''^example( |$)'''
 
 # --- ask.toml additions ---
 [[rules]]
-name = "..."
-command_regex = '''...'''
+name = "example-ask"
+command_regex = '''^other-example( |$)'''
 
-After the TOML sections, add a short "## Notes" block with one-line
-rationales for each suggested rule and any patterns you skipped.
+## Notes
+- example-allow: safe read-only operation
+- example-ask: external impact
