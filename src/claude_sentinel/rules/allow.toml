@@ -369,3 +369,8 @@ command_regex = '''^\s*sleep\s+'''
 [[rules]]
 name = "mmdc"
 command_regex = '''^\s*mmdc\s+'''
+
+# Added by `claude-sentinel apply` on 2026-04-18
+[[rules]]
+name = "flashspace-read"
+command_regex = '''^flashspace (get|list)-'''
