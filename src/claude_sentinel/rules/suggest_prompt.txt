@@ -31,11 +31,22 @@ Classification guidance:
 Prefer conservative regexes: it is better to require one extra confirmation
 prompt than to silently allow a risky command. When unsure, suggest ASK.
 
-The following command patterns were observed in the log with decision="ask"
-but no existing rule matched, so each fell through to the slow LLM_JUDGE
-stage (~2-5s per invocation). Suggest rules that would cover them.
+The following command patterns reached the LLM_JUDGE stage (no existing
+rule matched, so each fell through to a slow LLM call ~2-5s per
+invocation). Each row shows the stages and the LLM's decisions
+(`allow` / `ask` / `deny`) tallied across observations. Suggest rules
+that would cover them on the next run:
 
-Patterns (ranked by frequency; tool_name, count, representative samples):
+- For patterns where the LLM consistently chose `allow` → suggest an
+  ALLOW rule.
+- For patterns where the LLM chose `ask`, or where the intent is
+  destructive / mutates shared state / reaches outside the local
+  machine → suggest an ASK rule.
+- For patterns where the LLM chose `deny`, or that look unambiguously
+  dangerous → flag in Notes for human review (do NOT emit a deny.toml
+  section).
+
+Patterns (ranked by frequency; tool_name, count, stages, decisions, samples):
 
 {ranking_table}
 

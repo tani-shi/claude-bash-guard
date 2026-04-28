@@ -428,14 +428,15 @@ def _add_analysis_filters(parser: argparse.ArgumentParser, *, default_limit: int
     )
     parser.add_argument(
         "--decision",
-        default="ask",
+        default=None,
         choices=["allow", "deny", "ask"],
-        help='Filter by decision (default: "ask")',
+        help="Filter by decision (default: all decisions)",
     )
     parser.add_argument(
         "--stage",
+        default="LLM_JUDGE",
         choices=["RULE_DENY", "RULE_ALLOW", "RULE_ASK", "LLM_JUDGE"],
-        help="Filter by stage",
+        help='Filter by stage (default: "LLM_JUDGE" — patterns that fell through the rule engine)',
     )
     parser.add_argument(
         "--since",
@@ -456,8 +457,10 @@ def _collect_patterns(args: argparse.Namespace) -> list:
 
 
 def _run_analyze(args: argparse.Namespace) -> None:
+    decision_label = args.decision or "all"
     print(
-        f"[analyze] scanning logs: decision={args.decision} since={args.since} top={args.limit}",
+        f"[analyze] scanning logs: decision={decision_label} stage={args.stage} "
+        f"since={args.since} top={args.limit}",
         file=sys.stderr,
         flush=True,
     )
@@ -476,6 +479,7 @@ def _run_analyze(args: argparse.Namespace) -> None:
                         "tool_name": p.tool_name,
                         "count": p.count,
                         "stages": p.stages,
+                        "decisions": p.decisions,
                         "samples": p.samples,
                         "covered_by": p.covered_by,
                     },
@@ -490,7 +494,8 @@ def _run_analyze(args: argparse.Namespace) -> None:
 
     covered_count = sum(1 for p in patterns if p.covered_by)
     header = (
-        f"Top {len(visible)} uncovered patterns (decision={args.decision}, since={args.since})"
+        f"Top {len(visible)} uncovered patterns "
+        f"(decision={decision_label}, stage={args.stage}, since={args.since})"
     )
     print(header)
     print()
@@ -557,8 +562,10 @@ def _run_apply(args: argparse.Namespace) -> None:
 
 
 def _run_suggest(args: argparse.Namespace) -> None:
+    decision_label = args.decision or "all"
     print(
-        f"[suggest] scanning logs: decision={args.decision} since={args.since} top={args.limit}",
+        f"[suggest] scanning logs: decision={decision_label} stage={args.stage} "
+        f"since={args.since} top={args.limit}",
         file=sys.stderr,
         flush=True,
     )

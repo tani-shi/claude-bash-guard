@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from importlib import resources
 from typing import Any, Literal
 
+from claude_sentinel.command_normalizer import normalize_for_matching
+
 
 @dataclass
 class Rule:
@@ -79,25 +81,49 @@ def get_ask_rules() -> RuleSet:
 
 
 def match_deny(command: str) -> Rule | None:
-    """Check if command matches any deny rule."""
+    """Check if command matches any deny rule.
+
+    Tries the original command first, then a prefix-option-stripped form
+    (so ``git -c http.proxy= push --force origin main`` still hits the
+    ``force-push-main`` deny rule). The OR combination keeps deny safe:
+    if either form matches, the command is denied.
+    """
+    normalized = normalize_for_matching(command)
     for rule in get_deny_rules().command_rules:
         if rule.pattern.search(command):
+            return rule
+        if normalized != command and rule.pattern.search(normalized):
             return rule
     return None
 
 
 def match_allow(command: str) -> Rule | None:
-    """Check if command matches any allow rule."""
+    """Check if command matches any allow rule.
+
+    Falls back to the prefix-option-stripped form so ``git -c x=y diff``
+    matches the same allow rule as ``git diff``.
+    """
+    normalized = normalize_for_matching(command)
     for rule in get_allow_rules().command_rules:
         if rule.pattern.search(command):
+            return rule
+        if normalized != command and rule.pattern.search(normalized):
             return rule
     return None
 
 
 def match_ask(command: str) -> Rule | None:
-    """Check if command matches any ask rule."""
+    """Check if command matches any ask rule.
+
+    Critical for safety: ``git -c safecrlf=false reset --hard`` must
+    still match the ``git-reset-hard`` ask rule rather than falling
+    through to LLM_JUDGE.
+    """
+    normalized = normalize_for_matching(command)
     for rule in get_ask_rules().command_rules:
         if rule.pattern.search(command):
+            return rule
+        if normalized != command and rule.pattern.search(normalized):
             return rule
     return None
 

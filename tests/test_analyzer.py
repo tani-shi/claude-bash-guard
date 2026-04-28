@@ -33,11 +33,19 @@ class TestNormalizeBash:
     def test_multi_token_npm_run(self):
         assert analyzer._normalize_bash("npm run migrate:up") == "npm run"
 
-    def test_flag_after_head_falls_back_to_head(self):
-        # When the second token is a flag we don't try to guess past it —
-        # the grouping key is just the head command.
+    def test_unknown_flag_after_head_falls_back_to_head(self):
+        # Unknown options halt prefix-stripping; the grouping key is the
+        # head command alone.
         assert analyzer._normalize_bash("git --version") == "git"
-        assert analyzer._normalize_bash("git -C /tmp status") == "git"
+        assert analyzer._normalize_bash("git --unknown-flag") == "git"
+
+    def test_known_prefix_options_stripped_to_subcommand(self):
+        # Known prefix options (-C, -c, --no-pager, --silent, ...) collapse
+        # to the same grouping key as the prefix-free form.
+        assert analyzer._normalize_bash("git -C /tmp status") == "git status"
+        assert analyzer._normalize_bash("git -c color.ui=never diff") == "git diff"
+        assert analyzer._normalize_bash("npm --silent install") == "npm install"
+        assert analyzer._normalize_bash("docker -q ps") == "docker ps"
 
     def test_empty(self):
         assert analyzer._normalize_bash("") is None
@@ -96,6 +104,29 @@ class TestSummarize:
         ]
         patterns = analyzer.summarize(records=records)
         assert patterns[0].stages == {"LLM_JUDGE": 2, "RULE_ASK": 1}
+
+    def test_decision_tally(self):
+        records = [
+            _record("Bash", "sqlite3 a"),
+            _record("Bash", "sqlite3 b"),
+            _record("Bash", "sqlite3 c"),
+        ]
+        records[0]["decision"] = "allow"
+        records[1]["decision"] = "allow"
+        records[2]["decision"] = "ask"
+        patterns = analyzer.summarize(records=records)
+        assert patterns[0].decisions == {"allow": 2, "ask": 1}
+
+    def test_prefix_options_collapse_grouping(self):
+        # git -c x=y diff and git diff group together under "git diff"
+        records = [
+            _record("Bash", "git -c color.ui=never diff"),
+            _record("Bash", "git diff HEAD"),
+            _record("Bash", "git -C /tmp/repo diff"),
+        ]
+        patterns = analyzer.summarize(records=records)
+        keys = {p.key: p.count for p in patterns}
+        assert keys["git diff"] == 3
 
     def test_limit(self):
         records = [_record("Bash", f"cmd{i}") for i in range(30)]

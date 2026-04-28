@@ -65,6 +65,15 @@ class TestDenyRules:
         assert match_deny("cat README.md") is None
         assert match_deny("echo hello") is None
 
+    # --- Prefix options must not bypass DENY rules ---
+
+    def test_force_push_main_with_git_c_option(self):
+        assert match_deny("git -c http.proxy= push --force origin main") is not None
+        assert match_deny("git -c x=y push --force origin master") is not None
+
+    def test_force_push_main_with_no_pager(self):
+        assert match_deny("git --no-pager push --force origin main") is not None
+
 
 class TestAllowRules:
     def test_ls(self):
@@ -336,6 +345,44 @@ class TestAllowRules:
 
     def test_claude_sessions(self):
         assert match_allow("claude sessions list") is not None
+
+    # --- Prefix options (preprocessing via command_normalizer) ---
+
+    def test_git_c_config_options(self):
+        # git -c key=value before subcommand should still match allow.
+        assert match_allow("git -c color.ui=never diff") is not None
+        assert match_allow("git -c color.ui=never status") is not None
+        assert match_allow("git -c http.proxy= log") is not None
+
+    def test_git_no_pager(self):
+        assert match_allow("git --no-pager log --oneline") is not None
+        assert match_allow("git --no-pager status") is not None
+
+    def test_git_dir_eq_form(self):
+        assert match_allow("git --git-dir=/tmp/.git status") is not None
+
+    def test_npm_silent_install(self):
+        assert match_allow("npm --silent install") is not None
+        assert match_allow("npm -s install") is not None
+        assert match_allow("npm --silent test") is not None
+
+    def test_pnpm_silent_run(self):
+        assert match_allow("pnpm --silent run build") is not None
+
+    def test_docker_quiet_read(self):
+        assert match_allow("docker -q ps") is not None
+        assert match_allow("docker --quiet images") is not None
+
+    def test_gh_repo_subcommand_read(self):
+        assert match_allow("gh -R owner/repo pr list") is not None
+        assert match_allow("gh --repo=owner/repo issue view 123") is not None
+
+    def test_make_jobs(self):
+        assert match_allow("make -j 8 build") is not None
+        assert match_allow("make --jobs 4 test") is not None
+
+    def test_make_directory_subdir(self):
+        assert match_allow("make -C subdir test") is not None
 
 
 class TestSensitivePathRules:
@@ -748,6 +795,20 @@ class TestAskRules:
     def test_xargs_safe_not_asked(self):
         assert match_ask("xargs echo") is None
         assert match_ask("xargs grep pattern") is None
+
+    # --- Prefix options (preprocessing via command_normalizer) ---
+
+    def test_git_c_reset_hard(self):
+        # Critical: prefix options must NOT bypass destructive ASK rules.
+        assert match_ask("git -c safecrlf=false reset --hard") is not None
+        assert match_ask("git --no-pager reset --hard HEAD~1") is not None
+
+    def test_git_c_checkout(self):
+        assert match_ask("git -c x=y checkout -- file.txt") is not None
+        assert match_ask("git --no-pager checkout main") is not None
+
+    def test_git_c_clean(self):
+        assert match_ask("git -c x=y clean -fd") is not None
 
 
 class TestAllowRulesNarrowed:

@@ -2,48 +2,13 @@
 
 from __future__ import annotations
 
-import shlex
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
 
 from claude_sentinel import logger, rule_engine
-
-# Commands where the subcommand meaningfully changes the intent. For these,
-# the first two tokens form the grouping key (e.g. "git worktree" vs "git status").
-_MULTI_TOKEN_COMMANDS = frozenset(
-    {
-        "git",
-        "npm",
-        "yarn",
-        "pnpm",
-        "bun",
-        "uv",
-        "pip",
-        "pip3",
-        "cargo",
-        "docker",
-        "make",
-        "gh",
-        "aws",
-        "gcloud",
-        "kubectl",
-        "terraform",
-        "pulumi",
-        "helm",
-        "brew",
-        "apt",
-        "apt-get",
-        "conda",
-        "go",
-        "launchctl",
-        "systemctl",
-        "plutil",
-        "defaults",
-        "crontab",
-    }
-)
+from claude_sentinel.command_normalizer import normalize_for_analysis
 
 
 @dataclass
@@ -54,33 +19,26 @@ class PatternSummary:
     tool_name: str
     count: int = 0
     stages: dict[str, int] = field(default_factory=dict)
+    decisions: dict[str, int] = field(default_factory=dict)
     samples: list[str] = field(default_factory=list)
     covered_by: str | None = None  # rule name that already matches this pattern
 
-    def add(self, sample: str, stage: str) -> None:
+    def add(self, sample: str, stage: str, decision: str) -> None:
         self.count += 1
         self.stages[stage] = self.stages.get(stage, 0) + 1
+        self.decisions[decision] = self.decisions.get(decision, 0) + 1
         if sample and sample not in self.samples and len(self.samples) < 3:
             self.samples.append(sample)
 
 
 def _normalize_bash(command: str) -> str | None:
-    """Return a grouping key for a Bash command, or None if empty/unparseable."""
-    command = command.strip()
-    if not command:
-        return None
-    try:
-        tokens = shlex.split(command, posix=True)
-    except ValueError:
-        tokens = command.split()
-    if not tokens:
-        return None
-    head = tokens[0]
-    if head in _MULTI_TOKEN_COMMANDS and len(tokens) >= 2:
-        second = tokens[1]
-        if not second.startswith("-"):
-            return f"{head} {second}"
-    return head
+    """Return a grouping key for a Bash command, or None if empty/unparseable.
+
+    Delegates to ``command_normalizer.normalize_for_analysis`` so prefix
+    options are stripped before grouping (``git -c x=y diff`` and
+    ``git diff`` collapse to the same ``"git diff"`` key).
+    """
+    return normalize_for_analysis(command)
 
 
 def _normalize_path(tool_name: str, file_path: str) -> str | None:
@@ -122,8 +80,8 @@ def _check_existing_rule(tool_name: str, sample: str) -> str | None:
 def summarize(
     *,
     since: float | None = None,
-    decision: str | None = "ask",
-    stage: str | None = None,
+    decision: str | None = None,
+    stage: str | None = "LLM_JUDGE",
     limit: int = 20,
     records: Iterable[dict[str, Any]] | None = None,
 ) -> list[PatternSummary]:
@@ -131,8 +89,12 @@ def summarize(
 
     Args:
         since: Unix timestamp; only consider records newer than this.
-        decision: Filter by decision (default "ask").
-        stage: Filter by stage (e.g. "LLM_JUDGE").
+        decision: Filter by decision. ``None`` (default) includes all
+            decisions — useful for surfacing ALLOW candidates the LLM
+            judged safe but no rule covered.
+        stage: Filter by stage. Defaults to ``"LLM_JUDGE"`` so the
+            analyzer focuses on patterns that fell through the rule
+            engine (the actionable improvement target).
         limit: Maximum number of patterns to return.
         records: Optional pre-fetched iterator (primarily for testing).
 
@@ -149,6 +111,7 @@ def summarize(
         tool_name = rec.get("tool_name", "")
         input_value = rec.get("input", "")
         rec_stage = rec.get("stage", "")
+        rec_decision = rec.get("decision", "")
         key = _normalize(tool_name, input_value)
         if not key:
             continue
@@ -156,7 +119,7 @@ def summarize(
         if summary is None:
             summary = PatternSummary(key=key, tool_name=tool_name)
             groups[key] = summary
-        summary.add(input_value, rec_stage)
+        summary.add(input_value, rec_stage, rec_decision)
 
     # Check existing rule coverage on a representative sample for each group.
     for summary in groups.values():

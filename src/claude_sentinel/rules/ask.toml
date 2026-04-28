@@ -284,8 +284,3 @@ command_regex = '''^\s*xargs\s+(rm|kill|pkill|killall|chmod|chown|mv|dd)'''
 [[rules]]
 name = "eval-source"
 command_regex = '''^\s*(eval|source|\.)\s'''
-
-# Added by `claude-sentinel apply` on 2026-04-18
-[[rules]]
-name = "git-push"
-command_regex = '''^git push( |$)'''

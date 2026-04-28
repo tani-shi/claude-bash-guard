@@ -49,7 +49,11 @@ def _format_ranking(patterns: Iterable[PatternSummary]) -> str:
     lines: list[str] = []
     for rank, p in enumerate(patterns, start=1):
         stages = ",".join(f"{k}={v}" for k, v in sorted(p.stages.items()))
-        lines.append(f"{rank}. [{p.tool_name}] key={p.key!r}  count={p.count}  stages={stages}")
+        decisions = ",".join(f"{k}={v}" for k, v in sorted(p.decisions.items()))
+        lines.append(
+            f"{rank}. [{p.tool_name}] key={p.key!r}  count={p.count}  "
+            f"stages={stages}  decisions={decisions}"
+        )
         for sample in p.samples:
             lines.append(f"     sample: {sample}")
     return "\n".join(lines) if lines else "(no uncovered patterns)"

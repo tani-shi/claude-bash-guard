@@ -49,6 +49,10 @@ So `cd infra && terraform apply -auto-approve` is split into `cd infra` (allow) 
 
 The splitter only models what it needs to find command boundaries; constructs it does not handle (heredocs `<<EOF`, ANSI-C quoting `$'…'`, `case` statements, unbalanced quotes/parens) resolve to **ask** by design — a parser limitation can never silently *allow* a dangerous command, only force an extra confirmation prompt.
 
+### Prefix-option normalization
+
+Rules are matched twice for each segment: once against the original command, then against a **prefix-option-stripped** form. This lets a single rule like `^\s*git\s+(diff|status|...)` match all of `git diff`, `git -c color.ui=never diff`, `git --no-pager diff`, and `git -C /tmp/repo diff` without enumerating every wrapper. Stripping is whitelist-only — for each known program (git, npm, yarn, pnpm, bun, uv, cargo, go, make, docker, gh, kubectl, aws, gcloud) only documented prefix options like `-c`, `-C`, `--no-pager`, `--silent`, `-q`, `-R`, `-j`, `--config`, `--region` are removed. An unknown option halts stripping (safe fallback), and options after the subcommand (`git push --force`, `npm run test --silent`) are never touched. The same normalization is applied to ALLOW, ASK, and DENY matching, so prefix options cannot be used to slip past confirmation rules either.
+
 For file tools (`Read`, `Write`, `Edit`, `MultiEdit`), sensitive path deny rules are checked. If no deny rule matches, the operation is allowed. These rules are evaluated purely by the hook and are **not** written to `settings.json`. The installer adds these tools to `permissions.allow` so Claude Code does not prompt for confirmation, while the hook dynamically blocks access to sensitive paths.
 
 Read-only tools with no side effects (`Grep`, `Glob`, `WebFetch`, `WebSearch`, Slack read/search tools) are auto-allowed without evaluation.
@@ -232,19 +236,20 @@ claude-sentinel uninstall  # Remove hooks from ~/.claude/settings.json
 
 ### Analyze logs
 
-Aggregate logged command patterns to find what is falling through to `LLM_JUDGE` or hitting `RULE_ASK` most often. No LLM call.
+Aggregate logged command patterns that fell through to `LLM_JUDGE` (i.e. matched no existing rule) — these are the actionable improvement targets. By default all decisions (`allow` / `ask` / `deny`) the LLM made are surfaced, so `allow`-judged patterns can become ALLOW rules and `ask`-judged ones become ASK rules. No LLM call.
 
 ```bash
-claude-sentinel analyze                        # top 20 uncovered patterns from the last 30 days
-claude-sentinel analyze --since 7d -n 50       # last 7 days, top 50
-claude-sentinel analyze --stage LLM_JUDGE      # only LLM_JUDGE fallthroughs
+claude-sentinel analyze                        # default: stage=LLM_JUDGE, decision=all, last 30d, top 20
+claude-sentinel analyze --since 7d -n 50       # narrower window, top 50
+claude-sentinel analyze --decision ask         # only patterns the LLM judged "ask"
+claude-sentinel analyze --stage RULE_ASK       # patterns hitting an existing ASK rule
 claude-sentinel analyze --include-covered      # also show patterns existing rules already match
-claude-sentinel analyze --json                 # JSON Lines for scripting
+claude-sentinel analyze --json                 # JSON Lines for scripting (includes per-pattern decisions tally)
 ```
 
 ### Suggest rules
 
-Ask an LLM (Sonnet 4.6) to propose ALLOW/ASK `[[rules]]` candidates for the uncovered patterns. Output is TOML fragments on stdout (progress on stderr).
+Ask an LLM (Sonnet 4.6) to propose ALLOW/ASK `[[rules]]` candidates for the uncovered patterns. The prompt now passes the per-pattern decision tally (allow/ask/deny) so the LLM can choose the right section: patterns it consistently allowed become ALLOW rules, ask/destructive ones become ASK rules, deny-judged ones are flagged in Notes for human review. Output is TOML fragments on stdout (progress on stderr).
 
 ```bash
 claude-sentinel suggest                        # top 20 uncovered patterns → TOML suggestions
@@ -283,17 +288,23 @@ The LLM evaluates the command and responds with `ALLOW`, `DENY`, or `ASK`. On ti
 
 ```
 src/claude_sentinel/
-├── cli.py           # Entry point, argparse
-├── evaluator.py     # Multi-stage evaluation engine
-├── hook_io.py       # stdin/stdout JSON handling
-├── rule_engine.py   # TOML rule loading and regex matching
-├── llm_judge.py     # LLM_JUDGE: claude subprocess
-├── installer.py     # Hook install/uninstall
+├── cli.py                # Entry point, argparse
+├── evaluator.py          # Multi-stage evaluation engine
+├── hook_io.py            # stdin/stdout JSON handling
+├── rule_engine.py        # TOML rule loading and regex matching
+├── command_normalizer.py # Strip prefix options before matching/grouping
+├── llm_judge.py          # LLM_JUDGE: claude subprocess
+├── analyzer.py           # Aggregate log records into ranked patterns
+├── suggester.py          # LLM-driven rule candidate generation
+├── applier.py            # Append validated rules to allow/ask.toml
+├── logger.py             # Evaluation log writer/reader
+├── installer.py          # Hook install/uninstall
 └── rules/
-    ├── deny.toml      # RULE_DENY patterns
-    ├── allow.toml     # RULE_ALLOW patterns
-    ├── ask.toml       # RULE_ASK patterns
-    └── llm_prompt.txt # LLM_JUDGE prompt template
+    ├── deny.toml           # RULE_DENY patterns
+    ├── allow.toml          # RULE_ALLOW patterns
+    ├── ask.toml            # RULE_ASK patterns
+    ├── llm_prompt.txt      # LLM_JUDGE prompt template
+    └── suggest_prompt.txt  # Rule-suggestion prompt template
 ```
 
 ## Development
