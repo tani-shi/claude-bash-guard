@@ -1,19 +1,27 @@
-"""LLM-based rule suggestion from aggregated log patterns."""
+"""LLM agent driven rule suggestion.
+
+The agent is given Bash tool access and instructed to invoke
+``claude-sentinel log`` / ``claude-sentinel rules`` itself to inspect
+the evaluation log and existing ruleset, group commands semantically,
+and emit TOML rule candidates that the applier can append to
+allow.toml / ask.toml. There is no client-side aggregation step —
+grouping is a model judgement, not a regex match.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import sys
 import time
-from collections.abc import Iterable
 from importlib import resources
 
-from claude_sentinel.analyzer import PatternSummary
-
 _MODEL = "claude-sonnet-4-6"
-# Sonnet with a reasoning-heavy prompt (existing rule taxonomy + pattern
-# table) regularly runs longer than Haiku — give it a generous window.
-_SDK_TIMEOUT = 180.0
+# Agent-driven suggest invokes the LLM with Bash tool access and lets
+# it loop through several `claude-sentinel log/rules` calls before
+# emitting TOML output. Needs more headroom than the old single-shot
+# prompt.
+_SDK_TIMEOUT = 300.0
+_MAX_TURNS = 15
 _MAX_RETRIES = 2
 
 
@@ -25,14 +33,10 @@ def _progress(msg: str) -> None:
 def _describe_message(message: object) -> str:
     """One-line label describing an SDK streaming message."""
     name = type(message).__name__
-    # AssistantMessage has .content which is a list of blocks; show its size.
     content = getattr(message, "content", None)
     if isinstance(content, list) and content:
-        kinds: list[str] = []
-        for block in content:
-            kinds.append(type(block).__name__)
+        kinds: list[str] = [type(block).__name__ for block in content]
         return f"{name} ({len(content)} block(s): {', '.join(kinds)})"
-    # ResultMessage carries the final .result string; show its length.
     result = getattr(message, "result", None)
     if isinstance(result, str):
         return f"{name} ({len(result)} chars)"
@@ -44,34 +48,23 @@ def _load_prompt_template() -> str:
     return (rules_pkg / "suggest_prompt.txt").read_text(encoding="utf-8")
 
 
-def _format_ranking(patterns: Iterable[PatternSummary]) -> str:
-    """Render pattern summaries as a human-readable table for the prompt."""
-    lines: list[str] = []
-    for rank, p in enumerate(patterns, start=1):
-        stages = ",".join(f"{k}={v}" for k, v in sorted(p.stages.items()))
-        decisions = ",".join(f"{k}={v}" for k, v in sorted(p.decisions.items()))
-        lines.append(
-            f"{rank}. [{p.tool_name}] key={p.key!r}  count={p.count}  "
-            f"stages={stages}  decisions={decisions}"
-        )
-        for sample in p.samples:
-            lines.append(f"     sample: {sample}")
-    return "\n".join(lines) if lines else "(no uncovered patterns)"
+def build_prompt(*, since: str, limit: int) -> str:
+    """Render the agent prompt with the given log window.
+
+    The template uses ``{since}`` and ``{limit}`` placeholders for the
+    Bash command examples it shows the agent.
+    """
+    return _load_prompt_template().format(since=since, limit=limit)
 
 
-def build_prompt(patterns: Iterable[PatternSummary]) -> str:
-    """Public for testing: render the full prompt without calling the LLM."""
-    return _load_prompt_template().format(ranking_table=_format_ranking(patterns))
-
-
-async def _query_sdk(prompt: str, *, verbose: bool) -> str:
+async def _query_agent(prompt: str, *, verbose: bool) -> str:
     from claude_agent_sdk import ClaudeAgentOptions, ResultMessage, query
 
     options = ClaudeAgentOptions(
         model=_MODEL,
-        max_turns=1,
+        max_turns=_MAX_TURNS,
         permission_mode="bypassPermissions",
-        allowed_tools=[],
+        allowed_tools=["Bash"],
         env={"CLAUDECODE": "", "CLAUDE_CODE_ENTRYPOINT": ""},
     )
     result_text = ""
@@ -87,38 +80,40 @@ async def _query_sdk(prompt: str, *, verbose: bool) -> str:
 
 
 def suggest(
-    patterns: list[PatternSummary],
     *,
-    skip_covered: bool = True,
+    since: str = "30d",
+    limit: int = 200,
     verbose: bool = False,
 ) -> str:
-    """Ask the LLM for ALLOW/ASK rule candidates covering the given patterns.
+    """Run the suggestion agent.
+
+    Sonnet inspects the LLM_JUDGE log via Bash and returns TOML rule
+    candidates suitable for piping into ``claude-sentinel apply``.
 
     Args:
-        patterns: Aggregated log patterns from ``analyzer.summarize``.
-        skip_covered: Exclude patterns already matched by an existing rule.
-        verbose: Emit streaming progress to stderr while the LLM runs.
+        since: Relative time window the agent will pass to
+            ``claude-sentinel log``.
+        limit: Max log records exposed to the agent per fetch.
+        verbose: Stream agent progress (Bash invocations and result
+            chunks) to stderr while it runs.
 
     Returns:
-        The raw LLM output (TOML fragments + notes), or a status message
-        when there is nothing to suggest or the call fails.
+        The raw agent output (TOML fragments + notes), or a status
+        message when the call times out or fails.
     """
-    candidates = [p for p in patterns if not (skip_covered and p.covered_by)]
-    if not candidates:
-        return "# No uncovered patterns to suggest rules for."
-
     if verbose:
         _progress(
-            f"sending {len(candidates)} pattern(s) to {_MODEL} (timeout {int(_SDK_TIMEOUT)}s)"
+            f"agent {_MODEL} since={since} limit={limit} "
+            f"(timeout {int(_SDK_TIMEOUT)}s, max_turns={_MAX_TURNS})"
         )
 
-    prompt = build_prompt(candidates)
+    prompt = build_prompt(since=since, limit=limit)
     last_error = ""
     for attempt in range(1, _MAX_RETRIES + 1):
         try:
             if verbose and attempt > 1:
                 _progress(f"retry {attempt}/{_MAX_RETRIES}")
-            result = asyncio.run(_query_sdk(prompt, verbose=verbose))
+            result = asyncio.run(_query_agent(prompt, verbose=verbose))
             if verbose:
                 _progress("done")
             return result

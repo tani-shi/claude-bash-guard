@@ -234,29 +234,19 @@ claude-sentinel install    # Add hooks to ~/.claude/settings.json
 claude-sentinel uninstall  # Remove hooks from ~/.claude/settings.json
 ```
 
-### Analyze logs
+### Suggest rules (agent-driven)
 
-Aggregate logged command patterns that fell through to `LLM_JUDGE` (i.e. matched no existing rule) — these are the actionable improvement targets. By default all decisions (`allow` / `ask` / `deny`) the LLM made are surfaced, so `allow`-judged patterns can become ALLOW rules and `ask`-judged ones become ASK rules. No LLM call.
-
-```bash
-claude-sentinel analyze                        # default: stage=LLM_JUDGE, decision=all, last 30d, top 20
-claude-sentinel analyze --since 7d -n 50       # narrower window, top 50
-claude-sentinel analyze --decision ask         # only patterns the LLM judged "ask"
-claude-sentinel analyze --stage RULE_ASK       # patterns hitting an existing ASK rule
-claude-sentinel analyze --include-covered      # also show patterns existing rules already match
-claude-sentinel analyze --json                 # JSON Lines for scripting (includes per-pattern decisions tally)
-```
-
-### Suggest rules
-
-Ask an LLM (Sonnet 4.6) to propose ALLOW/ASK `[[rules]]` candidates for the uncovered patterns. The prompt now passes the per-pattern decision tally (allow/ask/deny) so the LLM can choose the right section: patterns it consistently allowed become ALLOW rules, ask/destructive ones become ASK rules, deny-judged ones are flagged in Notes for human review. Output is TOML fragments on stdout (progress on stderr).
+`claude-sentinel suggest` runs Sonnet 4.6 as an agent: the model is given a Bash tool and instructed to invoke `claude-sentinel log --json --stage LLM_JUDGE` and `claude-sentinel rules --json` itself, group log records by *intent* (not by surface form), check coverage against existing rules, and emit TOML rule candidates. Replaces the old fixed-logic aggregation, which couldn't tell that `cd src && make test`, `make test 2>&1 | tail -5`, and `make test` are the same thing.
 
 ```bash
-claude-sentinel suggest                        # top 20 uncovered patterns → TOML suggestions
-claude-sentinel suggest --since 7d -n 10       # narrower window
-claude-sentinel suggest --include-covered      # re-suggest even for patterns already covered
-claude-sentinel suggest --quiet                # suppress stderr progress lines
+claude-sentinel suggest                        # default: 30d window, up to 200 records
+claude-sentinel suggest --since 7d -n 100      # narrower window, fewer records
+claude-sentinel suggest --quiet                # suppress agent progress on stderr
 ```
+
+Progress is streamed to stderr so you can see which Bash commands the agent ran. The TOML output on stdout follows the same `# --- allow.toml additions ---` / `# --- ask.toml additions ---` / `## Notes` format as before, so `claude-sentinel apply` consumes it unchanged. DENY candidates are surfaced only in `## Notes` for human review — the agent never proposes a `deny.toml` section.
+
+The agent runs with `permission_mode="bypassPermissions"` so the hook does not recursively evaluate its own Bash invocations. The prompt restricts the agent to `claude-sentinel log` / `claude-sentinel rules` only — any other shell command is treated as a violation. Cost and latency are higher than the old single-shot prompt because the agent loops up to 15 turns; this is acceptable for manual `make suggest-rules` / `make update-rules` runs.
 
 ### Apply suggestions
 
@@ -294,8 +284,7 @@ src/claude_sentinel/
 ├── rule_engine.py        # TOML rule loading and regex matching
 ├── command_normalizer.py # Strip prefix options before matching/grouping
 ├── llm_judge.py          # LLM_JUDGE: claude subprocess
-├── analyzer.py           # Aggregate log records into ranked patterns
-├── suggester.py          # LLM-driven rule candidate generation
+├── suggester.py          # Agent-driven rule candidate generation
 ├── applier.py            # Append validated rules to allow/ask.toml
 ├── logger.py             # Evaluation log writer/reader
 ├── installer.py          # Hook install/uninstall
@@ -326,9 +315,8 @@ make test          # Run tests (pytest)
 make clean         # Remove build artifacts and caches
 
 # Rule maintenance
-make analyze-logs  # Rank uncovered command patterns from recent logs
-make suggest-rules # Ask Sonnet 4.6 for TOML rule candidates (stdout only)
-make update-rules  # Analyze + suggest + apply; prints git diff for review
+make suggest-rules # Run the LLM agent for TOML rule candidates (stdout only)
+make update-rules  # Suggest + apply; prints git diff for review
 
 # Test a command locally
 uv run claude-sentinel --test "your-command-here"
@@ -336,18 +324,17 @@ uv run claude-sentinel --test "your-command-here"
 
 ### Rule maintenance workflow
 
-When `LLM_JUDGE` fallthroughs pile up in the evaluation log, use the built-in analyzer + LLM suggester to refresh `allow.toml` / `ask.toml`:
+When `LLM_JUDGE` fallthroughs pile up in the evaluation log, use the agent-driven suggester to refresh `allow.toml` / `ask.toml`:
 
-1. `make update-rules` — aggregates the log, asks Sonnet 4.6 for rule candidates, appends ALLOW/ASK entries to the TOML files, and prints the `git diff --stat`.
+1. `make update-rules` — runs Sonnet 4.6 as an agent that reads the log via `claude-sentinel log/rules`, proposes ALLOW/ASK entries, appends them to the TOML files, and prints `git diff --stat`.
 2. **Human review**: `git diff src/claude_sentinel/rules/` — inspect every new `[[rules]]` block. Revert any you disagree with (`git checkout -- <file>`).
 3. `make check` — ensure the new regexes don't regress existing tests.
-4. Optionally add targeted assertions in `tests/test_rules.py` for important new patterns (mirrors the workflow that produced commit `11aea10`).
+4. Optionally add targeted assertions in `tests/test_rules.py` for important new patterns.
 5. Commit the approved changes.
 
 Separate steps are available if you want more control:
 
-- `make analyze-logs` — ranked pattern report only (no LLM call, no writes).
-- `make suggest-rules` — suggestions on stdout, no writes.
+- `make suggest-rules` — agent output on stdout, no writes.
 - `claude-sentinel apply --dry-run` — validate a saved suggestion file without touching TOML.
 
 DENY rule additions are never applied automatically. If the LLM proposes a DENY entry it is surfaced in the `[apply]` output and must be added by hand.

@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import IO
 
 from claude_sentinel import (
-    analyzer,
     applier,
     evaluator,
     hook_io,
@@ -101,37 +100,28 @@ def main(argv: list[str] | None = None) -> None:
         "--path", action="store_true", help="Print log directory path and exit"
     )
 
-    # analyze subcommand
-    analyze_parser = subparsers.add_parser(
-        "analyze", help="Aggregate logged command patterns to inform rule updates"
-    )
-    _add_analysis_filters(analyze_parser, default_limit=20)
-    analyze_parser.add_argument(
-        "--include-covered",
-        action="store_true",
-        help="Also show patterns already matched by existing rules",
-    )
-    analyze_parser.add_argument(
-        "--json",
-        action="store_true",
-        dest="json_output",
-        help="JSON Lines output",
-    )
-
     # suggest subcommand
     suggest_parser = subparsers.add_parser(
-        "suggest", help="Ask the LLM to propose TOML rule candidates from logged patterns"
+        "suggest",
+        help="Run an LLM agent that inspects the log and proposes TOML rule candidates",
     )
-    _add_analysis_filters(suggest_parser, default_limit=20)
     suggest_parser.add_argument(
-        "--include-covered",
-        action="store_true",
-        help="Include patterns already matched by existing rules",
+        "--since",
+        default="30d",
+        help="Relative time window the agent passes to `claude-sentinel log` (default: 30d)",
+    )
+    suggest_parser.add_argument(
+        "-n",
+        "--limit",
+        type=int,
+        default=200,
+        dest="limit",
+        help="Max log records exposed to the agent per fetch (default: 200)",
     )
     suggest_parser.add_argument(
         "--quiet",
         action="store_true",
-        help="Suppress progress output on stderr",
+        help="Suppress agent progress output on stderr",
     )
 
     # apply subcommand
@@ -170,10 +160,6 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.subcommand == "log":
         _run_log(args)
-        return
-
-    if args.subcommand == "analyze":
-        _run_analyze(args)
         return
 
     if args.subcommand == "suggest":
@@ -417,104 +403,6 @@ def _parse_since(value: str) -> float:
     return time.time() - (amount * units[unit])
 
 
-def _add_analysis_filters(parser: argparse.ArgumentParser, *, default_limit: int) -> None:
-    """Shared filter options for analyze/suggest subcommands."""
-    parser.add_argument(
-        "-n",
-        type=int,
-        default=default_limit,
-        dest="limit",
-        help=f"Top N patterns to consider (default: {default_limit})",
-    )
-    parser.add_argument(
-        "--decision",
-        default=None,
-        choices=["allow", "deny", "ask"],
-        help="Filter by decision (default: all decisions)",
-    )
-    parser.add_argument(
-        "--stage",
-        default="LLM_JUDGE",
-        choices=["RULE_DENY", "RULE_ALLOW", "RULE_ASK", "LLM_JUDGE"],
-        help='Filter by stage (default: "LLM_JUDGE" — patterns that fell through the rule engine)',
-    )
-    parser.add_argument(
-        "--since",
-        default="30d",
-        help="Relative time window (e.g. 1h, 7d, 30d). Default: 30d",
-    )
-
-
-def _collect_patterns(args: argparse.Namespace) -> list:
-    """Apply the shared filters and return ranked pattern summaries."""
-    since_ts = _parse_since(args.since) if args.since else None
-    return analyzer.summarize(
-        since=since_ts,
-        decision=args.decision,
-        stage=args.stage,
-        limit=args.limit,
-    )
-
-
-def _run_analyze(args: argparse.Namespace) -> None:
-    decision_label = args.decision or "all"
-    print(
-        f"[analyze] scanning logs: decision={decision_label} stage={args.stage} "
-        f"since={args.since} top={args.limit}",
-        file=sys.stderr,
-        flush=True,
-    )
-    patterns = _collect_patterns(args)
-    if not args.include_covered:
-        visible = [p for p in patterns if not p.covered_by]
-    else:
-        visible = patterns
-
-    if args.json_output:
-        for p in visible:
-            print(
-                json.dumps(
-                    {
-                        "key": p.key,
-                        "tool_name": p.tool_name,
-                        "count": p.count,
-                        "stages": p.stages,
-                        "decisions": p.decisions,
-                        "samples": p.samples,
-                        "covered_by": p.covered_by,
-                    },
-                    ensure_ascii=False,
-                )
-            )
-        return
-
-    if not visible:
-        print("No matching patterns.")
-        return
-
-    covered_count = sum(1 for p in patterns if p.covered_by)
-    header = (
-        f"Top {len(visible)} uncovered patterns "
-        f"(decision={decision_label}, stage={args.stage}, since={args.since})"
-    )
-    print(header)
-    print()
-    for p in visible:
-        top_stage = max(p.stages.items(), key=lambda kv: kv[1])[0] if p.stages else "-"
-        # Pick the shortest sample — the least decorated, most representative shape.
-        sample = min(p.samples, key=len) if p.samples else ""
-        print(f"  {p.count:>3}x  [{p.tool_name}/{top_stage}]  {p.key}")
-        if sample and sample != p.key:
-            print(f"        {_truncate(sample, 88)}")
-    if not args.include_covered and covered_count:
-        print()
-        print(f"(+{covered_count} covered by existing rules; hidden.)")
-
-
-def _truncate(s: str, limit: int) -> str:
-    return s if len(s) <= limit else s[: limit - 1] + "\u2026"
-
-
 def _run_apply(args: argparse.Namespace) -> None:
     if args.input:
         text = Path(args.input).read_text(encoding="utf-8")
@@ -562,21 +450,9 @@ def _run_apply(args: argparse.Namespace) -> None:
 
 
 def _run_suggest(args: argparse.Namespace) -> None:
-    decision_label = args.decision or "all"
-    print(
-        f"[suggest] scanning logs: decision={decision_label} stage={args.stage} "
-        f"since={args.since} top={args.limit}",
-        file=sys.stderr,
-        flush=True,
-    )
-    patterns = _collect_patterns(args)
-    if not patterns:
-        print("# No patterns matched the filters.")
-        return
-
     output = suggester.suggest(
-        patterns,
-        skip_covered=not args.include_covered,
+        since=args.since,
+        limit=args.limit,
         verbose=not args.quiet,
     )
     print(output)
