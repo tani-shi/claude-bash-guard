@@ -302,7 +302,7 @@ When `LLM_JUDGE` fallthroughs pile up in the evaluation log, refresh `allow.toml
 
 1. `make update-rules` launches Claude Code in **plan mode** with the first prompt set to `/update-rules` — equivalent to running `claude --permission-mode plan -- "/update-rules"`. (You can also start `claude` yourself and type `/update-rules` manually.) The slash command is defined in `.claude/commands/update-rules.md` and drives Claude through the workflow: fetch the LLM_JUDGE log via `claude-sentinel log --json`, fetch existing rules via `claude-sentinel rules --json`, group records by *intent* (not surface form), and propose ALLOW / ASK candidates with rationale and decision tally.
 2. **Iterate.** Tell Claude things like "drop #3", "narrow #5 to `make test:*`", "split #7 into two rules", "this should be ASK not ALLOW". Claude refines until you say "apply".
-3. On approval Claude **edits the TOML files directly** (appending under a dated `# Added on YYYY-MM-DD via /update-rules` comment) and adds matching assertions to `tests/test_rules.py`. `deny.toml` is never edited automatically — DENY candidates are surfaced for manual review only.
+3. On approval Claude **edits the TOML files directly**, inserting each new rule into the appropriate `# --- Title Case Section Name ---` section of `allow.toml`/`ask.toml` (or creating a new section when none fits), and adds matching assertions to `tests/test_rules.py`. `deny.toml` is never edited automatically — DENY candidates are surfaced for manual review only.
 4. Claude runs `make check` to confirm the new rules and tests pass, then shows `git diff src/claude_sentinel/rules/ tests/test_rules.py`. Revert anything you disagree with (`git checkout -- <file>`).
 5. Commit the approved changes.
 

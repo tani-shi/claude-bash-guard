@@ -67,24 +67,58 @@ tests) directly.
    they say so explicitly.
 
 8. When the user approves, **edit the TOML files directly** with the
-   `Edit` tool:
-   - ALLOW additions → append to `src/claude_sentinel/rules/allow.toml`
-   - ASK additions → append to `src/claude_sentinel/rules/ask.toml`
+   `Edit` tool, inserting each new rule into the appropriate Title
+   Case section:
+   - ALLOW additions → `src/claude_sentinel/rules/allow.toml`
+   - ASK additions → `src/claude_sentinel/rules/ask.toml`
    - Never write to `deny.toml`.
 
-   Append-only — do not modify or reorder existing `[[rules]]` blocks.
-   Place new entries at the end of the file, separated from the
-   previous content by a blank line and a single comment header that
-   includes today's date, e.g.:
-   ```toml
+   Both files are organized into thematic sections marked with
+   `# --- Title Case Section Name ---` headers (e.g. `# --- Git ---`,
+   `# --- GitHub CLI ---`, `# --- Docker Mutations ---`,
+   `# --- Destructive File / Git / Process Operations ---`). Before
+   editing, **read the target file** so you understand the current
+   section layout. Then for each new rule:
+   - **Match it to an existing section by topic.** A new `gh` read
+     rule belongs under `# --- GitHub CLI ---` in allow.toml; a new
+     destructive command belongs under
+     `# --- Destructive File / Git / Process Operations ---` in
+     ask.toml; a new `make` mutation target under
+     `# --- Make External-Impact Targets ---`.
+   - **Insert as a new `[[rules]]` block at the end of that section**,
+     immediately before the next `# --- ... ---` header (or at EOF
+     for the last section). Preserve the blank-line spacing the
+     existing blocks use.
+   - **If no section fits**, create a new section at a logically
+     grouped position with a Title Case header. Match the style of
+     existing section names: short, topical, Title Case (e.g.
+     `# --- Section Name ---`). Do not invent a section for a single
+     orphan rule when an adjacent section already covers the topic.
+   - **Do not add dated `# Added on ...` comments.** Git history is
+     the audit trail; the rule body stays clean.
+   - **Do not reorder or modify existing rules.** Existing
+     `[[rules]]` blocks (their `name`, `command_regex`, and order)
+     must remain untouched.
 
-   # Added on YYYY-MM-DD via /update-rules
+   Example — appending a new `gh-pr-comment-read` rule under the
+   existing `# --- GitHub CLI ---` section in `allow.toml`:
+   ```toml
+   # --- GitHub CLI ---
+
    [[rules]]
-   name = "kebab-case-name"
-   command_regex = '''^example( |$)'''
+   name = "gh-read"
+   command_regex = '''^\s*gh\s+(status|api|search)(\s|$)'''
+
+   [[rules]]
+   name = "gh-subcommand-read"
+   command_regex = '''^\s*gh\s+\S+\s+(list|view|...)(\s|$)'''
+
+   [[rules]]                                # ← new block inserted here
+   name = "gh-pr-comment-read"
+   command_regex = '''^\s*gh\s+pr\s+comment\s+(view|list)(\s|$)'''
+
+   # --- Google Workspace CLI (gog) ---     # ← next section unchanged
    ```
-   Group all new ALLOW entries under one such header in `allow.toml`,
-   and all new ASK entries under one such header in `ask.toml`.
 
 9. **Add targeted tests for the new rules** by editing
    `tests/test_rules.py`:
