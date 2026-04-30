@@ -374,3 +374,24 @@ command_regex = '''^\s*mmdc\s+'''
 [[rules]]
 name = "flashspace-read"
 command_regex = '''^flashspace (get|list)-'''
+
+# Added by `claude-sentinel apply` on 2026-04-30
+[[rules]]
+name = "ps-pgrep"
+command_regex = '''^\s*(ps|pgrep)(\s|$)'''
+
+[[rules]]
+name = "stat-mdfind"
+command_regex = '''^\s*(stat|mdfind)(\s|$)'''
+
+[[rules]]
+name = "zipinfo"
+command_regex = '''^\s*zipinfo(\s|$)'''
+
+[[rules]]
+name = "pip-read"
+command_regex = '''^\s*pip3?\s+(show|list|freeze|check|search|config\s+(list|get))(\s|$)'''
+
+[[rules]]
+name = "make-dotted"
+command_regex = '''^\s*make\s+\w+\.(build|dev|test|lint|fmt|format|check|typecheck|run|start|stop|status|clean|docs|generate|codegen|install)(\s|$)'''

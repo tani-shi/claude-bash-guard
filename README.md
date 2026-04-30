@@ -133,14 +133,15 @@ Common development commands are auto-approved, including:
 - Shell: Bash comments (`#`), shell constructs (`for`, `while`, `if`, `case`, `do`/`done`, `then`/`else`/`fi`, `esac`), `pushd`/`popd`, `zsh`/`bash`/`sh` invocations
 - File operations: `ls`, `cat`, `head`, `tail`, `find`, `grep`, `cp`, `mv`, `mkdir`, `touch`, `rm` (non-recursive only; `rm -r`/`rm -rf` require confirmation), `trash`
 - Git: `status`, `log`, `diff`, `add`, `commit`, `revert`, `push` (with `--force-with-lease`), etc. (destructive ops like `reset --hard`, `checkout --`, `clean` require confirmation)
-- Build tools: `make` (safe targets with hyphenated variants like `build-*`, `type-*`, `generate-*`, `start-*`, `stop-*`, `status-*`, `cli-*`, `web-*`, `zip-*`; excludes `deploy`/`publish`/`release`/`push`/`upgrade`/`tf-*`/`terraform-*`), `cargo` (safe subcommands only), `go build`, `node`, `bun` (excludes `bun x`), `python`, `uv` (excludes `publish`)
+- Build tools: `make` (safe targets with hyphenated variants like `build-*`, `type-*`, `generate-*`, `start-*`, `stop-*`, `status-*`, `cli-*`, `web-*`, `zip-*`, plus dotted variants like `web.build`/`server.dev` for safe actions such as `build`/`dev`/`test`/`lint`/`run`/`start`/`stop`/`status`/`clean`; excludes `deploy`/`publish`/`release`/`push`/`upgrade`/`tf-*`/`terraform-*`), `cargo` (safe subcommands only), `go build`, `node`, `bun` (excludes `bun x`), `python`, `uv` (excludes `publish`), `pip` read (`show`/`list`/`freeze`/`check`/`search`/`config get`)
 - Package managers: `npm`/`yarn`/`pnpm` (safe subcommands only, excludes `publish`; `run` allows `test`/`build`/`lint`/`cli`/etc., excludes `deploy`/`publish`/`release`/`push`); `npx`/`pnpx`/`bunx` for safe dev tools (`prettier`, `tsc`, `eslint`, `biome`, `prisma`, `vitest`, `jest`, `playwright`, `shadcn`, `next`, `vite`, etc.; unknown packages require confirmation)
 - Containers: `docker` (safe subcommands only, excludes `push`; `docker compose exec`/`run` require confirmation)
 - Database: `sqlite3`
 - Network: `curl`/`wget` (excludes pipe-to-shell, POST/PUT/DELETE/PATCH methods, and `--data` flags)
 - Cloud: `aws` read operations (`list`, `describe`, `get`, `show`, `wait`), `gcloud` read operations (including `logging read` and `logging tail`)
-- macOS: `launchctl` read operations (`list`, `print`, `blame`), `plutil` read (`-p`, `-lint`), `sample` (process profiling), `defaults read`
-- Utilities: `echo`, `pwd`, `which`, `date`, `sort`, `sed` (excludes `sed -i`), `awk`, `tar`, `zip`, `env`, `printenv`
+- macOS: `launchctl` read operations (`list`, `print`, `blame`), `plutil` read (`-p`, `-lint`), `sample` (process profiling), `defaults read`, `mdfind` (Spotlight)
+- Process inspection: `ps`, `pgrep`
+- Utilities: `echo`, `pwd`, `which`, `date`, `sort`, `sed` (excludes `sed -i`), `awk`, `tar`, `zip`, `zipinfo`, `stat`, `env`, `printenv`
 
 See [`src/claude_sentinel/rules/allow.toml`](src/claude_sentinel/rules/allow.toml) for the full list.
 
