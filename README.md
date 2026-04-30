@@ -235,39 +235,6 @@ claude-sentinel install    # Add hooks to ~/.claude/settings.json
 claude-sentinel uninstall  # Remove hooks from ~/.claude/settings.json
 ```
 
-### Apply suggestions
-
-Append validated rules to `allow.toml` / `ask.toml`. Reads stdin (or `--input FILE`), validates each entry (regex compiles, name is not a duplicate), and appends a timestamped block. `deny.toml` is never written to automatically — proposed DENY entries are reported and skipped.
-
-```bash
-cat suggestions.txt | claude-sentinel apply       # pipe input
-claude-sentinel apply --input suggestions.txt     # file input
-claude-sentinel apply --dry-run < suggestions.txt # validate only
-```
-
-The expected input has both section markers (even if empty) and an optional notes block:
-
-```
-# --- allow.toml additions ---
-[[rules]]
-name = "example-allow"
-command_regex = '''^example( |$)'''
-
-# --- ask.toml additions ---
-[[rules]]
-name = "example-ask"
-command_regex = '''^other-example( |$)'''
-
-## Notes
-- example-allow: safe read-only operation
-```
-
-After applying, review the diff before committing:
-
-```bash
-git diff src/claude_sentinel/rules/
-```
-
 ## LLM judge (LLM_JUDGE)
 
 When a command matches neither deny, allow, nor ask rules, `claude-sentinel` invokes:
@@ -335,19 +302,16 @@ When `LLM_JUDGE` fallthroughs pile up in the evaluation log, refresh `allow.toml
 
 1. `make update-rules` launches Claude Code in **plan mode** with the first prompt set to `/update-rules` — equivalent to running `claude --permission-mode plan -- "/update-rules"`. (You can also start `claude` yourself and type `/update-rules` manually.) The slash command is defined in `.claude/commands/update-rules.md` and drives Claude through the workflow: fetch the LLM_JUDGE log via `claude-sentinel log --json`, fetch existing rules via `claude-sentinel rules --json`, group records by *intent* (not surface form), and propose ALLOW / ASK candidates with rationale and decision tally.
 2. **Iterate.** Tell Claude things like "drop #3", "narrow #5 to `make test:*`", "split #7 into two rules", "this should be ASK not ALLOW". Claude refines until you say "apply".
-3. On approval Claude pipes the final TOML through `claude-sentinel apply`, which validates each entry and appends a timestamped block to `allow.toml` / `ask.toml`. `deny.toml` is never written automatically — DENY candidates are surfaced for manual review only.
-4. Claude shows `git diff --stat src/claude_sentinel/rules/`. Review with `git diff src/claude_sentinel/rules/` and revert anything you disagree with (`git checkout -- <file>`).
-5. `make check` — ensure the new regexes don't regress existing tests.
-6. Optionally add targeted assertions in `tests/test_rules.py` for important new patterns.
-7. Commit the approved changes.
+3. On approval Claude **edits the TOML files directly** (appending under a dated `# Added on YYYY-MM-DD via /update-rules` comment) and adds matching assertions to `tests/test_rules.py`. `deny.toml` is never edited automatically — DENY candidates are surfaced for manual review only.
+4. Claude runs `make check` to confirm the new rules and tests pass, then shows `git diff src/claude_sentinel/rules/ tests/test_rules.py`. Revert anything you disagree with (`git checkout -- <file>`).
+5. Commit the approved changes.
 
 Lower-level pieces if you want them:
 
 - `claude-sentinel log --stage LLM_JUDGE --since 30d -n 200 --json` — raw fallthrough records.
 - `claude-sentinel rules --json` — current rule snapshot.
-- `claude-sentinel apply --dry-run < suggestions.txt` — validate a saved suggestion file without touching TOML.
 
-DENY rule additions are never applied automatically. If the LLM proposes a DENY entry it is surfaced in the `[apply]` output and must be added by hand.
+DENY rule additions are never applied automatically. The slash command surfaces DENY candidates so you can add them to `deny.toml` by hand.
 
 Requires Python 3.11+ (uses `tomllib` from the standard library). The only runtime dependency is `claude-agent-sdk` (used by the LLM judge stage); the rule engine and the bash splitter have zero external dependencies.
 

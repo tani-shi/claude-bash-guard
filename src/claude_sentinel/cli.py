@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import IO
 
 from claude_sentinel import (
-    applier,
     evaluator,
     hook_io,
     installer,
@@ -99,22 +98,6 @@ def main(argv: list[str] | None = None) -> None:
         "--path", action="store_true", help="Print log directory path and exit"
     )
 
-    # apply subcommand
-    apply_parser = subparsers.add_parser(
-        "apply",
-        help="Append new ALLOW/ASK rules from suggest output to rules/*.toml",
-    )
-    apply_parser.add_argument(
-        "--input",
-        metavar="FILE",
-        help="Read suggestions from FILE (default: stdin)",
-    )
-    apply_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Validate and report without writing",
-    )
-
     args = parser.parse_args(argv)
 
     if args.subcommand == "install":
@@ -135,10 +118,6 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.subcommand == "log":
         _run_log(args)
-        return
-
-    if args.subcommand == "apply":
-        _run_apply(args)
         return
 
     if args.test:
@@ -372,52 +351,6 @@ def _parse_since(value: str) -> float:
         raise argparse.ArgumentTypeError(f"Invalid number in '{value}'") from err
 
     return time.time() - (amount * units[unit])
-
-
-def _run_apply(args: argparse.Namespace) -> None:
-    if args.input:
-        text = Path(args.input).read_text(encoding="utf-8")
-    else:
-        text = sys.stdin.read()
-
-    if not text.strip():
-        print("[apply] empty input; nothing to do.", file=sys.stderr, flush=True)
-        return
-
-    print(f"[apply] read {len(text)} chars of input", file=sys.stderr, flush=True)
-    result = applier.apply(text, dry_run=args.dry_run)
-    verb = "Would add" if args.dry_run else "Added"
-    for kind, names in sorted(result.added.items()):
-        if names:
-            print(
-                f"[apply] {verb} {len(names)} rule(s) to {kind}.toml: {', '.join(names)}",
-                file=sys.stderr,
-                flush=True,
-            )
-    for kind, skipped in sorted(result.skipped.items()):
-        for name, reason in skipped:
-            print(
-                f"[apply] skipped {kind}:{name} ({reason})",
-                file=sys.stderr,
-                flush=True,
-            )
-
-    if result.total_added == 0 and result.total_skipped == 0:
-        print(
-            "[apply] no allow/ask/deny section markers found in input. "
-            "Expected lines like '# --- allow.toml additions ---'.",
-            file=sys.stderr,
-            flush=True,
-        )
-        return
-
-    if not args.dry_run and result.total_added:
-        print(
-            f"[apply] wrote {result.total_added} rule(s). "
-            "Review with: git diff src/claude_sentinel/rules/",
-            file=sys.stderr,
-            flush=True,
-        )
 
 
 if __name__ == "__main__":

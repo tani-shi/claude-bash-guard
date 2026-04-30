@@ -1,13 +1,14 @@
 ---
 description: Interactively propose ALLOW/ASK rule additions for claude-sentinel from recent LLM_JUDGE log entries
-allowed-tools: Bash(claude-sentinel log:*), Bash(claude-sentinel rules:*), Bash(claude-sentinel apply:*), Bash(git diff:*), Read
+allowed-tools: Bash(claude-sentinel log:*), Bash(claude-sentinel rules:*), Bash(make check:*), Bash(git diff:*), Read, Edit
 ---
 
 You are helping the user maintain `allow.toml` and `ask.toml` for
 claude-sentinel — the Claude Code safety hook that evaluates shell
 commands. Find commands frequently falling through to LLM_JUDGE,
-propose rules that would catch them, and refine the proposals
-**interactively** with the user before applying.
+propose rules that would catch them, refine the proposals
+**interactively** with the user, and then edit the rule files (and
+tests) directly.
 
 ## Workflow
 
@@ -39,7 +40,7 @@ propose rules that would catch them, and refine the proposals
 
 4. For each group, check whether the existing allow/ask/deny rules
    already match a representative sample. If they do, mark covered
-   and skip — do NOT propose duplicate rules.
+   and skip — do NOT propose duplicates.
 
 5. For groups not covered, classify them:
    - LLM consistently picked `allow` and the intent is read-only or a
@@ -47,52 +48,67 @@ propose rules that would catch them, and refine the proposals
    - LLM picked `ask`, or the intent is destructive / mutates shared
      state / reaches outside the local machine → ASK rule.
    - LLM picked `deny`, or the command is unambiguously dangerous →
-     DO NOT propose. Surface in the Notes section only and tell the
-     user to add it manually to `deny.toml`.
+     surface for human review only. Do NOT auto-edit `deny.toml`.
 
-6. Present your proposed candidates to the user as a compact table
-   or numbered list. For each row include: section (allow/ask),
-   proposed `name`, proposed regex, a representative sample command,
-   the decision tally (e.g. `allow=12, ask=3`), and a one-line
-   rationale. Also list any covered/deny-flagged groups so the user
-   sees the full picture.
+6. Present your proposed candidates to the user as a compact table or
+   numbered list. For each row include: section (allow/ask), proposed
+   `name`, proposed regex, a representative sample command, the
+   decision tally (e.g. `allow=12, ask=3`), and a one-line rationale.
+   Also list any covered/deny-flagged groups so the user sees the full
+   picture.
 
 7. **Iterate with the user.** They will say things like:
    - "drop #3" — remove that proposal
    - "narrow #5 — only `make test:*`, not `make test.*`" — refine the regex
    - "split #7 into two rules" — propose two `[[rules]]` entries
    - "this should be ASK not ALLOW" — change classification
-   - "proceed" / "apply" — write the final TOML and apply
-   Keep iterating until the user is satisfied. Do not apply until they
-   say so explicitly.
+   - "proceed" / "apply" — do the edits
+   Keep iterating until the user approves. Do not edit any file until
+   they say so explicitly.
 
-8. When the user approves, build the final TOML and pipe it through
-   `claude-sentinel apply` using a HEREDOC. The strict format is:
-   ```
-   cat <<'EOF' | claude-sentinel apply
-   # --- allow.toml additions ---
+8. When the user approves, **edit the TOML files directly** with the
+   `Edit` tool:
+   - ALLOW additions → append to `src/claude_sentinel/rules/allow.toml`
+   - ASK additions → append to `src/claude_sentinel/rules/ask.toml`
+   - Never write to `deny.toml`.
+
+   Append-only — do not modify or reorder existing `[[rules]]` blocks.
+   Place new entries at the end of the file, separated from the
+   previous content by a blank line and a single comment header that
+   includes today's date, e.g.:
+   ```toml
+
+   # Added on YYYY-MM-DD via /update-rules
    [[rules]]
-   name = "example-allow"
+   name = "kebab-case-name"
    command_regex = '''^example( |$)'''
-
-   # --- ask.toml additions ---
-   [[rules]]
-   name = "example-ask"
-   command_regex = '''^other-example( |$)'''
-
-   ## Notes
-   - example-allow: safe read-only operation (LLM picked allow 12 times)
-   - example-ask: external impact (LLM picked ask 3 times)
-   - skipped `git status` family: already covered by allow:git-status
-   EOF
    ```
-   Always emit BOTH section headers (`allow.toml additions` first,
-   then `ask.toml additions`), even if one is empty. Never emit a
-   `# --- deny.toml additions ---` section.
+   Group all new ALLOW entries under one such header in `allow.toml`,
+   and all new ASK entries under one such header in `ask.toml`.
 
-9. After apply succeeds, run `git diff --stat src/claude_sentinel/rules/`
-   and ask the user whether to keep, revert (`git checkout -- <file>`),
-   or further refine.
+9. **Add targeted tests for the new rules** by editing
+   `tests/test_rules.py`:
+   - For each new ALLOW rule: add an assertion in the `TestAllowRules`
+     class (e.g. `assert match_allow("...") is not None`).
+   - For each new ASK rule: add an assertion in the `TestAskRules`
+     class.
+   - Use a minimal but representative sample command. Match the style
+     of the existing tests in that file.
+
+10. Run `make check` to confirm the new rules and tests pass:
+    ```
+    make check
+    ```
+    If anything fails, surface the failure to the user and let them
+    decide whether to refine the regex, drop the rule, or fix the
+    test. Do not silently revert edits.
+
+11. Show the user the resulting diff:
+    ```
+    git diff src/claude_sentinel/rules/ tests/test_rules.py
+    ```
+    Ask whether to keep, revert (`git checkout -- <file>`), or refine
+    further.
 
 ## Regex rules
 
@@ -109,10 +125,11 @@ Each `[[rules]]` regex must:
 
 ## Constraints
 
-- Use ONLY the Bash commands listed in `allowed-tools` (claude-sentinel
-  log/rules/apply and git diff). Do not edit any rule file directly —
-  go through `claude-sentinel apply`.
-- Do not propose new entries for `deny.toml`. DENY changes always
-  require manual human review.
+- Use ONLY the tools listed in `allowed-tools`. No other Bash
+  commands; no editing of files outside
+  `src/claude_sentinel/rules/allow.toml`,
+  `src/claude_sentinel/rules/ask.toml`, and `tests/test_rules.py`.
+- Do not edit `deny.toml`. DENY changes always require manual human
+  review.
 - If the user asks for something outside this workflow (refactoring,
   new tooling, etc.), say so and stop.
