@@ -58,6 +58,17 @@ command_regex = '''^\s*(date|uname|whoami|hostname|id)\s*'''
 name = "cd"
 command_regex = '''^\s*cd(\s|$)'''
 
+# --- Variable Assignment ---
+# Static assignments only. Quoted values must not contain command substitution
+# ($(), `...`, ${...}); unquoted values are restricted to safe word characters.
+# Anything containing $() / `` is split out as a separate segment by the splitter
+# and evaluated independently, so a malicious VAR=$(curl evil) cannot bypass
+# this rule.
+
+[[rules]]
+name = "variable-assignment"
+command_regex = '''^\s*[A-Za-z_][A-Za-z0-9_]*=('[^']*'|"[^"`$]*"|[\w./:@%+-]*)\s*$'''
+
 [[rules]]
 name = "test-bracket"
 command_regex = '''^\s*(\[|test)\s+'''
@@ -221,14 +232,14 @@ name = "go"
 command_regex = '''^\s*go\s+(build|run|test|mod|fmt|vet)(\s|$)'''
 
 # --- Make ---
+# Trust the project's Makefile the same way we trust cargo/npm/uv/go: any
+# target may run arbitrary code, so listing specific targets gave a false
+# sense of safety while breaking project-specific targets like
+# `make door-ne-download`.
 
 [[rules]]
-name = "make-safe"
-command_regex = '''^\s*make(\s*$|\s+(all|build|test|check|lint|clean|install|fmt|format|docs|run|dev|debug|help|validate|type|generate|prisma|codegen|typecheck|diff|start|stop|status|cli|web|zip)[\w-]*(\s|$))'''
-
-[[rules]]
-name = "make-dotted"
-command_regex = '''^\s*make\s+\w+\.(build|dev|test|lint|fmt|format|check|typecheck|run|start|stop|status|clean|docs|generate|codegen|install)(\s|$)'''
+name = "make"
+command_regex = '''^\s*make(\s|$)'''
 
 # --- Linters & Formatters ---
 

