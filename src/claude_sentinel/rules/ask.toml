@@ -1,4 +1,6 @@
-# Commands that should prompt user confirmation without LLM evaluation.
+# Commands that prompt user confirmation without LLM evaluation.
+
+# --- Remote / System Access ---
 
 [[rules]]
 name = "ssh"
@@ -12,17 +14,11 @@ command_regex = '''^\s*systemctl\s+'''
 name = "crontab-edit"
 command_regex = '''^\s*crontab\s+(-e|-r)'''
 
+# --- Deploy & Infrastructure Mutations ---
+
 [[rules]]
 name = "deploy"
 command_regex = '''^\s*(?!(echo|cat|grep|rg|ag|find|head|tail|wc|sort|diff|git|ls|sed|awk|jq|python3?|node|file|strings)\s)(\S+\s+){0,2}deploy(\s|$)'''
-
-[[rules]]
-name = "make-deploy"
-command_regex = '''^\s*make\s+(deploy|tf[\w-]*|terraform-[\w-]*)(\s|$)'''
-
-[[rules]]
-name = "make-sync"
-command_regex = '''^\s*make\s+sync[\w-]*(\s|$)'''
 
 [[rules]]
 name = "terraform"
@@ -40,7 +36,26 @@ command_regex = '''^\s*kubectl\s+(apply|delete|create|replace|patch|edit|rollout
 name = "helm-mutate"
 command_regex = '''^\s*helm\s+(install|upgrade|uninstall|rollback)(\s|$)'''
 
-# --- Package publishing ---
+# --- Make External-Impact Targets ---
+
+[[rules]]
+name = "make-deploy"
+command_regex = '''^\s*make\s+(deploy|tf[\w-]*|terraform-[\w-]*)(\s|$)'''
+
+[[rules]]
+name = "make-sync"
+command_regex = '''^\s*make\s+sync[\w-]*(\s|$)'''
+
+[[rules]]
+name = "make-publish-release"
+command_regex = '''^\s*make\s+(publish|release|push)[\w-]*(\s|$)'''
+
+[[rules]]
+name = "make-upgrade"
+command_regex = '''^\s*make\s+upgrade[\w-]*(\s|$)'''
+
+# --- Package Publishing ---
+
 [[rules]]
 name = "npm-publish"
 command_regex = '''^\s*(npm|yarn|pnpm)\s+publish(\s|$)'''
@@ -53,42 +68,50 @@ command_regex = '''^\s*gem\s+push(\s|$)'''
 name = "twine-upload"
 command_regex = '''^\s*twine\s+upload(\s|$)'''
 
-# --- npx/pnpx/bunx execution (downloads & runs packages) ---
+# --- Package Execution (npx/pnpx/bunx) ---
+
 [[rules]]
 name = "npx-execute"
 command_regex = '''^\s*(npx|pnpx|bunx)\s+(?!(prettier|eslint|tsc|biome|shadcn(@\S+)?|prisma|vitest|jest|mocha|playwright|cypress|tailwindcss|postcss|autoprefixer|next|vite|turbo|tsup|esbuild|rollup|webpack)(\s|$))'''
 
-# --- uv mutation operations ---
+# --- Python Toolchain Mutations ---
+
 [[rules]]
 name = "uv-mutate"
 command_regex = '''^\s*uv\s+(pip\s+install|pip\s+uninstall|add|remove|tool\s+install|tool\s+uninstall|self\s+update|publish)(\s|$)'''
 
-# --- rustup mutation operations ---
+# --- Rust Toolchain Mutations ---
+
 [[rules]]
 name = "rustup-mutate"
 command_regex = '''^\s*rustup\s+(update|self|install|uninstall|default|override|component|target|toolchain|run)(\s|$)'''
 
-# --- cargo mutation operations ---
 [[rules]]
 name = "cargo-mutate"
 command_regex = '''^\s*cargo\s+(install|uninstall|add|remove|update|search|publish)(\s|$)'''
 
-# --- docker exec/run (arbitrary command execution) ---
+# --- Docker Mutations ---
+
 [[rules]]
 name = "docker-exec-run"
 command_regex = '''^\s*docker\s+(exec|run|cp|login|logout|attach)(\s|$)'''
 
-# --- go generate (runs arbitrary commands via //go:generate) ---
-[[rules]]
-name = "go-generate"
-command_regex = '''^\s*go\s+generate(\s|$)'''
-
-# --- Container registry push ---
 [[rules]]
 name = "docker-push"
 command_regex = '''^\s*docker\s+(push|buildx\s+.*--push)(\s|$)'''
 
-# --- GitHub mutation operations ---
+[[rules]]
+name = "docker-compose-exec-run"
+command_regex = '''^\s*docker[\s-]+compose\s+(exec|run)(\s|$)'''
+
+# --- Go Generate ---
+
+[[rules]]
+name = "go-generate"
+command_regex = '''^\s*go\s+generate(\s|$)'''
+
+# --- GitHub Mutations ---
+
 [[rules]]
 name = "gh-mutate"
 command_regex = '''^\s*gh\s+(pr|issue)\s+(create|close|merge|reopen|edit|comment|review)(\s|$)'''
@@ -105,12 +128,14 @@ command_regex = '''^\s*gh\s+repo\s+(create|delete|fork|rename|archive|edit)(\s|$
 name = "gh-api-mutate"
 command_regex = '''^\s*gh\s+api\s+.*(-X|--method)\s+(POST|PUT|DELETE|PATCH)'''
 
-# --- git push force (non-main; main/master is denied) ---
+# --- Git Force Push ---
+
 [[rules]]
 name = "git-push-force"
 command_regex = '''^\s*git\s+push\s+.*--force(?!-with-lease)'''
 
-# --- curl/wget with mutation methods ---
+# --- HTTP Mutations ---
+
 [[rules]]
 name = "curl-mutate"
 command_regex = '''^\s*(curl|wget)\s+.*(-X|--request)\s+(POST|PUT|DELETE|PATCH)'''
@@ -119,17 +144,20 @@ command_regex = '''^\s*(curl|wget)\s+.*(-X|--request)\s+(POST|PUT|DELETE|PATCH)'
 name = "curl-data"
 command_regex = '''^\s*curl\s+.*(-d\s|--data\s|--data-raw\s|--data-binary\s|--data-urlencode\s)'''
 
-# --- gcloud mutation operations ---
+# --- Google Cloud Mutations ---
+
 [[rules]]
 name = "gcloud-mutate"
 command_regex = '''^\s*gcloud\s+.*\s+(create|delete|update|set|add|remove|deploy|submit|run|import|export|enable|disable|reset|start|stop|resize|move|restore|cancel|approve|deny|revoke|bind|unbind|attach|detach|push|promote|rollback|abort|suspend|resume)(\s|$)'''
 
-# --- AWS CLI mutations (catch-all for non-read operations) ---
+# --- AWS Mutations ---
+
 [[rules]]
 name = "aws-mutate"
 command_regex = '''^\s*aws\s+(?!\S+\s+(list|describe|get|show|wait)(-\w+)*(\s|$))(?!sts\s+get-caller-identity(\s|$))'''
 
-# --- Firebase mutation operations ---
+# --- Firebase Mutations ---
+
 [[rules]]
 name = "firebase-mutate"
 command_regex = '''^\s*firebase\s+(functions:delete|firestore:delete|hosting:disable|database:(remove|set|update|push))(\s|$)'''
@@ -154,16 +182,14 @@ command_regex = '''^\s*firebase\s+functions:config:(set|unset|clone)(\s|$)'''
 name = "firebase-login"
 command_regex = '''^\s*firebase\s+(login|logout)(\s|$)'''
 
-# --- Make with external-impact targets ---
-[[rules]]
-name = "make-publish-release"
-command_regex = '''^\s*make\s+(publish|release|push)[\w-]*(\s|$)'''
+# --- Database Migrations ---
 
 [[rules]]
-name = "make-upgrade"
-command_regex = '''^\s*make\s+upgrade[\w-]*(\s|$)'''
+name = "npm-run-migrate"
+command_regex = '''^\s*(npm|yarn|pnpm)\s+run\s+.*migrat(e|ion)'''
 
-# --- macOS preferences mutation ---
+# --- macOS Preferences Mutations ---
+
 [[rules]]
 name = "defaults-write"
 command_regex = '''^\s*defaults\s+(write|import|delete)(\s|$)'''
@@ -172,22 +198,26 @@ command_regex = '''^\s*defaults\s+(write|import|delete)(\s|$)'''
 name = "plistbuddy-write"
 command_regex = '''^\s*/usr/libexec/PlistBuddy\s+-c\s+["']?(Set|Add|Delete|Merge|Import|Copy|Clear)'''
 
-# --- Homebrew mutation ---
+# --- Homebrew Mutations ---
+
 [[rules]]
 name = "brew-mutate"
 command_regex = '''^\s*brew\s+(install|uninstall|upgrade|reinstall|link|unlink|tap|untap|cleanup|autoremove|pin|unpin|services)(\s|$)'''
 
-# --- Claude CLI mutation ---
+# --- Claude CLI Mutations ---
+
 [[rules]]
 name = "claude-plugins-mutate"
 command_regex = '''^\s*claude\s+plugins?\s+(update|install|uninstall|remove|add)(\s|$)'''
 
-# --- xai CLI config mutation ---
+# --- xai CLI Mutations ---
+
 [[rules]]
 name = "xai-config-write"
 command_regex = '''^\s*xai\s+config\s+(init|set)(\s|$)'''
 
-# --- fam CLI mutation ---
+# --- fam CLI Mutations ---
+
 [[rules]]
 name = "fam-init"
 command_regex = '''^\s*fam\s+init(\s|$)'''
@@ -212,22 +242,19 @@ command_regex = '''^\s*fam\s+schedule\s+(enable|disable)(\s|$)'''
 name = "fam-service-mutate"
 command_regex = '''^\s*fam\s+service\s+(add|remove)(\s|$)'''
 
-# --- macOS default app manager (write) ---
+# --- macOS App Manager (duti) ---
+
 [[rules]]
 name = "duti-write"
 command_regex = '''^\s*duti\s+(-s\s|[^-])'''
 
-# --- npm/yarn/pnpm DB migration ---
-[[rules]]
-name = "npm-run-migrate"
-command_regex = '''^\s*(npm|yarn|pnpm)\s+run\s+.*migrat(e|ion)'''
+# --- claude-sentinel CLI Mutations ---
 
-# --- claude-sentinel CLI (mutate) ---
 [[rules]]
 name = "claude-sentinel-mutate"
 command_regex = '''^\s*claude-sentinel\s+(install|uninstall)(\s|$)'''
 
-# --- Destructive file/git/container operations ---
+# --- Destructive File / Git / Process Operations ---
 
 [[rules]]
 name = "rm-recursive"
@@ -244,10 +271,6 @@ command_regex = '''^\s*git\s+(-C\s+\S+\s+)?checkout(\s|$)'''
 [[rules]]
 name = "git-clean"
 command_regex = '''^\s*git\s+(-C\s+\S+\s+)?clean\s+'''
-
-[[rules]]
-name = "docker-compose-exec-run"
-command_regex = '''^\s*docker[\s-]+compose\s+(exec|run)(\s|$)'''
 
 [[rules]]
 name = "sed-in-place"
@@ -277,7 +300,7 @@ command_regex = '''^\s*flashspace\s+(delete|add|set|create|update|remove)[\w-]*(
 name = "xargs-destructive"
 command_regex = '''^\s*xargs\s+(rm|kill|pkill|killall|chmod|chown|mv|dd)'''
 
-# --- Indirect command execution ---
+# --- Indirect Code Execution ---
 
 # eval / source / `.` execute arbitrary code from a variable or file.
 # We can't statically inspect what they'll run, so always confirm.

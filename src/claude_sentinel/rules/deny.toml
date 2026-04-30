@@ -1,3 +1,7 @@
+# Denied commands and sensitive paths — confirmation cannot be bypassed.
+
+# --- Command Deny Rules ---
+
 [[rules]]
 name = "rm-rf-root"
 command_regex = '''rm\s+(-[a-zA-Z]*r[a-zA-Z]*\s+|--recursive\s+)(/\s*$|/\s+|~\s*$|~\s+|\$HOME\s*$|\$HOME\s+)'''
@@ -42,9 +46,10 @@ command_regex = '''gcloud\s+auth\s+print-(access|identity)-token(\s|$)'''
 name = "gcloud-service-account-keys"
 command_regex = '''gcloud\s+iam\s+service-accounts\s+keys\s+create(\s|$)'''
 
-# --- Sensitive path deny rules (shared by Read, Write, Edit, MultiEdit) ---
+# --- Sensitive Path Deny Rules (shared by Read, Write, Edit, MultiEdit) ---
 
-# A. Environment / config files
+# --- Environment / Config Files ---
+
 [[sensitive_path_rules]]
 name = "env-files"
 path_regex = '''(^|/)\.env(\..+)?$'''
@@ -61,7 +66,8 @@ path_regex = '''(^|/)secrets\.(yml|yaml|json|toml)$'''
 name = "terraform-vars"
 path_regex = '''(^|/)terraform\.tfvars(\.json)?$'''
 
-# B. SSH / crypto keys
+# --- SSH / Crypto Keys ---
+
 [[sensitive_path_rules]]
 name = "ssh-dir"
 path_regex = '''(^|/)\.ssh/'''
@@ -78,7 +84,8 @@ path_regex = '''(?<!\bpub)\.(pem|key)$'''
 name = "keystore-files"
 path_regex = '''\.(p12|pfx|jks|keystore)$'''
 
-# C. Cloud provider credentials
+# --- Cloud Provider Credentials ---
+
 [[sensitive_path_rules]]
 name = "aws-dir"
 path_regex = '''(^|/)\.aws/'''
@@ -99,7 +106,8 @@ path_regex = '''(^|/)(credentials|client_secret|service[-_]account[^/]*)\.json$'
 name = "terraform-rc"
 path_regex = '''(^|/)\.terraformrc$'''
 
-# D. Container / orchestration
+# --- Container / Orchestration ---
+
 [[sensitive_path_rules]]
 name = "docker-config"
 path_regex = '''(^|/)\.docker/config\.json$'''
@@ -108,7 +116,8 @@ path_regex = '''(^|/)\.docker/config\.json$'''
 name = "kube-config"
 path_regex = '''(^|/)\.kube/config$'''
 
-# E. Package manager / dev tool auth
+# --- Package Manager / Dev Tool Auth ---
+
 [[sensitive_path_rules]]
 name = "netrc"
 path_regex = '''(^|/)\.netrc$'''
@@ -137,7 +146,8 @@ path_regex = '''(^|/)\.gradle/gradle\.properties$'''
 name = "boto-config"
 path_regex = '''(^|/)\.(boto|s3cfg)$'''
 
-# F. Database
+# --- Database ---
+
 [[sensitive_path_rules]]
 name = "pgpass"
 path_regex = '''(^|/)\.pgpass$'''
@@ -146,7 +156,8 @@ path_regex = '''(^|/)\.pgpass$'''
 name = "mycnf"
 path_regex = '''(^|/)\.my\.cnf$'''
 
-# G. Other
+# --- Other ---
+
 [[sensitive_path_rules]]
 name = "htpasswd"
 path_regex = '''(^|/)\.htpasswd$'''

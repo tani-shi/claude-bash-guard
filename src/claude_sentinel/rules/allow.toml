@@ -1,3 +1,7 @@
+# Allow-listed commands and patterns that pass without confirmation.
+
+# --- Shell Builtins & Navigation ---
+
 [[rules]]
 name = "comment"
 command_regex = '''^\s*#'''
@@ -35,6 +39,112 @@ name = "grep"
 command_regex = '''^\s*(grep|rg|ag)\s+'''
 
 [[rules]]
+name = "shell-constructs"
+command_regex = '''^\s*(for|while|if|case|do|done|then|else|elif|fi|esac)(\s|$)'''
+
+[[rules]]
+name = "pushd-popd"
+command_regex = '''^\s*(pushd|popd)(\s|$)'''
+
+[[rules]]
+name = "which-type"
+command_regex = '''^\s*(which|type|command\s+-v)\s+'''
+
+[[rules]]
+name = "date-uname"
+command_regex = '''^\s*(date|uname|whoami|hostname|id)\s*'''
+
+[[rules]]
+name = "cd"
+command_regex = '''^\s*cd(\s|$)'''
+
+[[rules]]
+name = "test-bracket"
+command_regex = '''^\s*(\[|test)\s+'''
+
+[[rules]]
+name = "env-printenv"
+command_regex = '''^\s*(env|printenv)\s*'''
+
+[[rules]]
+name = "sleep"
+command_regex = '''^\s*sleep\s+'''
+
+# --- File Operations ---
+
+[[rules]]
+name = "mkdir"
+command_regex = '''^\s*mkdir\s+'''
+
+[[rules]]
+name = "touch"
+command_regex = '''^\s*touch\s+'''
+
+[[rules]]
+name = "cp-mv"
+command_regex = '''^\s*(cp|mv)\s+'''
+
+[[rules]]
+name = "rm-safe"
+command_regex = '''^\s*(trash\s+|rm\s+(?!.*(-[a-zA-Z]*[rR]|--recursive)))'''
+
+[[rules]]
+name = "chmod-chown"
+command_regex = '''^\s*(chmod|chown)\s+'''
+
+[[rules]]
+name = "tar-zip"
+command_regex = '''^\s*(tar|zip|unzip|gzip|gunzip)\s+'''
+
+[[rules]]
+name = "file-cmd"
+command_regex = '''^\s*file\s+'''
+
+[[rules]]
+name = "strings"
+command_regex = '''^\s*strings\s+'''
+
+[[rules]]
+name = "uuidgen"
+command_regex = '''^\s*uuidgen\s*'''
+
+[[rules]]
+name = "diff"
+command_regex = '''^\s*diff\s+'''
+
+# --- Text Processing ---
+
+[[rules]]
+name = "sed-awk"
+command_regex = '''^\s*(sed|awk)\s+'''
+
+[[rules]]
+name = "sort-uniq-cut"
+command_regex = '''^\s*(sort|uniq|cut|tr|tee|xargs)\s*'''
+
+[[rules]]
+name = "jq"
+command_regex = '''^\s*jq(\s|$)'''
+
+# --- Shell Runners ---
+
+[[rules]]
+name = "zsh-run"
+command_regex = '''^\s*(zsh|bash|sh)\s+'''
+
+# --- Help Flags ---
+
+[[rules]]
+name = "help-flag"
+command_regex = '''\s--help(\s|$)'''
+
+[[rules]]
+name = "help-subcommand"
+command_regex = '''^\s*\S+\s+help(\s|$)'''
+
+# --- Git ---
+
+[[rules]]
 name = "git-status"
 command_regex = '''^\s*git\s+(-C\s+\S+\s+)?(status|log|diff|branch|show|rev-parse|remote)(\s|$)'''
 
@@ -54,25 +164,7 @@ command_regex = '''^\s*git\s+(-C\s+\S+\s+)?(submodule|ls-files|ls-tree|ls-remote
 name = "git-version"
 command_regex = '''^\s*git\s+--version\s*$'''
 
-[[rules]]
-name = "shell-constructs"
-command_regex = '''^\s*(for|while|if|case|do|done|then|else|elif|fi|esac)(\s|$)'''
-
-[[rules]]
-name = "pushd-popd"
-command_regex = '''^\s*(pushd|popd)(\s|$)'''
-
-[[rules]]
-name = "which-type"
-command_regex = '''^\s*(which|type|command\s+-v)\s+'''
-
-[[rules]]
-name = "date-uname"
-command_regex = '''^\s*(date|uname|whoami|hostname|id)\s*'''
-
-[[rules]]
-name = "zsh-run"
-command_regex = '''^\s*(zsh|bash|sh)\s+'''
+# --- Python ---
 
 [[rules]]
 name = "python-run"
@@ -81,6 +173,12 @@ command_regex = '''^\s*python3?\s+'''
 [[rules]]
 name = "uv-safe"
 command_regex = '''^\s*uv\s+(run|sync|lock|tree|pip\s+(list|show|check|freeze)|tool\s+run|version|self\s+version|venv|init|build|export)(\s|$)'''
+
+[[rules]]
+name = "pip-read"
+command_regex = '''^\s*pip3?\s+(show|list|freeze|check|search|config\s+(list|get))(\s|$)'''
+
+# --- Node.js ---
 
 [[rules]]
 name = "node-run"
@@ -102,6 +200,8 @@ command_regex = '''^\s*(npx|pnpx|bunx)\s+(prettier|eslint|tsc|biome|shadcn(@\S+)
 name = "npm-run-safe"
 command_regex = '''^\s*(npm|yarn|pnpm)\s+run\s+(test|lint|build|dev|start|check|format|clean|docs|typecheck|type-check|analyze|watch|serve|preview|generate|codegen|prepare|preinstall|postinstall|prebuild|postbuild|cli)(\s|$)'''
 
+# --- Rust ---
+
 [[rules]]
 name = "rustc"
 command_regex = '''^\s*rustc\s+'''
@@ -114,45 +214,35 @@ command_regex = '''^\s*rustup\s+(show|which|doc|completions|check|--version)(\s|
 name = "cargo-safe"
 command_regex = '''^\s*cargo\s+(build|check|test|run|bench|clean|doc|new|init|fmt|clippy|fix|tree|metadata|verify-project|generate-lockfile|fetch|package|vendor|report|help|version)(\s|$)'''
 
+# --- Go ---
+
 [[rules]]
 name = "go"
 command_regex = '''^\s*go\s+(build|run|test|mod|fmt|vet)(\s|$)'''
+
+# --- Make ---
 
 [[rules]]
 name = "make-safe"
 command_regex = '''^\s*make(\s*$|\s+(all|build|test|check|lint|clean|install|fmt|format|docs|run|dev|debug|help|validate|type|generate|prisma|codegen|typecheck|diff|start|stop|status|cli|web|zip)[\w-]*(\s|$))'''
 
 [[rules]]
-name = "mkdir"
-command_regex = '''^\s*mkdir\s+'''
+name = "make-dotted"
+command_regex = '''^\s*make\s+\w+\.(build|dev|test|lint|fmt|format|check|typecheck|run|start|stop|status|clean|docs|generate|codegen|install)(\s|$)'''
+
+# --- Linters & Formatters ---
 
 [[rules]]
-name = "touch"
-command_regex = '''^\s*touch\s+'''
+name = "linters"
+command_regex = '''^\s*(tsc|eslint|prettier|biome|shellcheck|mypy|pyright|ruff|shfmt)(\s|$)'''
 
-[[rules]]
-name = "cp-mv"
-command_regex = '''^\s*(cp|mv)\s+'''
-
-[[rules]]
-name = "sed-awk"
-command_regex = '''^\s*(sed|awk)\s+'''
-
-[[rules]]
-name = "sort-uniq-cut"
-command_regex = '''^\s*(sort|uniq|cut|tr|tee|xargs)\s*'''
-
-[[rules]]
-name = "jq"
-command_regex = '''^\s*jq(\s|$)'''
-
-[[rules]]
-name = "diff"
-command_regex = '''^\s*diff\s+'''
+# --- HTTP & Network ---
 
 [[rules]]
 name = "curl-wget-get"
 command_regex = '''^\s*(curl|wget)\s+(?!.*\|\s*(bash|sh|zsh))(?!.*(-X|--request)\s+(POST|PUT|DELETE|PATCH))(?!.*(-d\s|--data|--form|-F\s|--upload-file|-T\s))'''
+
+# --- Docker ---
 
 [[rules]]
 name = "docker-read"
@@ -163,40 +253,10 @@ name = "docker-local"
 command_regex = '''^\s*docker\s+(build|pull|tag|stop|start|restart|rm|rmi|pause|unpause|wait|rename|save|load|export|import|network|volume|system|container|image|buildx|manifest|compose)(\s|$)'''
 
 [[rules]]
-name = "test-bracket"
-command_regex = '''^\s*(\[|test)\s+'''
+name = "docker-compose"
+command_regex = '''^\s*docker-compose\s+(ps|logs|config|images|events|top|version|up|down|build|pull|start|stop|restart|exec|run)(\s|$)'''
 
-[[rules]]
-name = "cd"
-command_regex = '''^\s*cd(\s|$)'''
-
-[[rules]]
-name = "rm-safe"
-command_regex = '''^\s*(trash\s+|rm\s+(?!.*(-[a-zA-Z]*[rR]|--recursive)))'''
-
-[[rules]]
-name = "chmod-chown"
-command_regex = '''^\s*(chmod|chown)\s+'''
-
-[[rules]]
-name = "tar-zip"
-command_regex = '''^\s*(tar|zip|unzip|gzip|gunzip)\s+'''
-
-[[rules]]
-name = "env-printenv"
-command_regex = '''^\s*(env|printenv)\s*'''
-
-[[rules]]
-name = "linters"
-command_regex = '''^\s*(tsc|eslint|prettier|biome|shellcheck|mypy|pyright|ruff|shfmt)(\s|$)'''
-
-[[rules]]
-name = "help-flag"
-command_regex = '''\s--help(\s|$)'''
-
-[[rules]]
-name = "help-subcommand"
-command_regex = '''^\s*\S+\s+help(\s|$)'''
+# --- GitHub CLI ---
 
 [[rules]]
 name = "gh-read"
@@ -205,6 +265,8 @@ command_regex = '''^\s*gh\s+(status|api|search)(\s|$)'''
 [[rules]]
 name = "gh-subcommand-read"
 command_regex = '''^\s*gh\s+\S+\s+(list|view|get|status|diff|check|watch|search|verify|logs|ports|token|trusted-root|gitignore|license|field-list|item-list)(\s|$)'''
+
+# --- Google Workspace CLI (gog) ---
 
 [[rules]]
 name = "gog-read"
@@ -218,21 +280,7 @@ command_regex = '''^\s*gog\s+\S+\s+(get|list|list-\w+|search|status|find|export|
 name = "gog-deep-read"
 command_regex = '''^\s*gog\s+\S+\s+\S+\s+(get|list|search|status|find|space|opens|url|profile|roster)(\s|$)'''
 
-[[rules]]
-name = "sqlite3"
-command_regex = '''^\s*sqlite3\s+'''
-
-[[rules]]
-name = "pdftotext"
-command_regex = '''^\s*pdftotext(\s|$)'''
-
-[[rules]]
-name = "fam-read"
-command_regex = '''^\s*fam\s+(show|export)(\s|$)'''
-
-[[rules]]
-name = "fam-subcommand-read"
-command_regex = '''^\s*fam\s+\S+\s+(show|status|list|test)(\s|$)'''
+# --- Google Cloud ---
 
 [[rules]]
 name = "gcloud-info"
@@ -258,9 +306,13 @@ command_regex = '''^\s*gcloud\s+(config\s+(list|get|configurations\s+(list|descr
 name = "gcloud-detect-analyze"
 command_regex = '''^\s*gcloud\s+.*\s+(detect-\w+|analyze-\w+|classify-text|recognize|recognize-long-running|explain|predict|raw-predict|direct-predict|direct-raw-predict)(\s|$)'''
 
+# --- Firebase ---
+
 [[rules]]
 name = "firebase-read"
 command_regex = '''^\s*firebase\s+(emulators:(start|exec)|serve|init|functions:log|firestore:indexes|projects:list|apps:list|functions:config:get|login:list|setup:emulators:\w+|target|target:apply|target:clear|target:remove)(\s|$)'''
+
+# --- AWS ---
 
 [[rules]]
 name = "aws-read"
@@ -270,7 +322,34 @@ command_regex = '''^\s*aws\s+\S+\s+(list|describe|get|show|wait)(-\w+)*(\s|$)'''
 name = "aws-sts-read"
 command_regex = '''^\s*aws\s+sts\s+get-caller-identity(\s|$)'''
 
-# --- macOS utilities ---
+# --- Terraform ---
+
+[[rules]]
+name = "terraform-read"
+command_regex = '''^\s*terraform\s+(validate|plan|fmt|init|output|show|state\s+(list|show)|workspace\s+(list|show|select)|providers|version|graph)(\s|$)'''
+
+# --- Database & Document ---
+
+[[rules]]
+name = "sqlite3"
+command_regex = '''^\s*sqlite3\s+'''
+
+[[rules]]
+name = "pdftotext"
+command_regex = '''^\s*pdftotext(\s|$)'''
+
+# --- Media Tools ---
+
+[[rules]]
+name = "ffmpeg"
+command_regex = '''^\s*ffmpeg\s+'''
+
+[[rules]]
+name = "mmdc"
+command_regex = '''^\s*mmdc\s+'''
+
+# --- macOS Utilities ---
+
 [[rules]]
 name = "launchctl-read"
 command_regex = '''^\s*launchctl\s+(list|print|blame|dumpstate)(\s|$)'''
@@ -292,90 +371,13 @@ name = "plistbuddy-read"
 command_regex = '''^\s*/usr/libexec/PlistBuddy\s+-c\s+["']?Print'''
 
 [[rules]]
-name = "strings"
-command_regex = '''^\s*strings\s+'''
-
-# --- Homebrew read ---
-[[rules]]
-name = "brew-read"
-command_regex = '''^\s*brew\s+(list|info|search|leaves|deps|uses|outdated|doctor|config|--version|home|cat|desc|log|tap-info|analytics)(\s|$)'''
-
-# --- Claude CLI read ---
-[[rules]]
-name = "claude-cli-read"
-command_regex = '''^\s*claude\s+(plugin\s+(list|marketplace)|plugins?\s+list|--version|version|sessions?\s+(list|show)|config\s+(list|get))(\s|$)'''
-
-# --- Media tools ---
-[[rules]]
-name = "ffmpeg"
-command_regex = '''^\s*ffmpeg\s+'''
-
-# --- xai CLI read ---
-[[rules]]
-name = "xai-read"
-command_regex = '''^\s*xai\s+(search|user|thread|trending|web|models)(\s|$)'''
-
-[[rules]]
-name = "xai-config-read"
-command_regex = '''^\s*xai\s+config\s+(get|list)(\s|$)'''
-
-# --- Shell plugin manager ---
-[[rules]]
-name = "sheldon"
-command_regex = '''^\s*sheldon\s+(source|list|version|completions|init)(\s|$)'''
-
-# --- macOS default app manager (read) ---
-[[rules]]
-name = "duti-read"
-command_regex = '''^\s*duti\s+(-x|-d|-l|--version)(\s|$)'''
-
-# --- claude-sentinel CLI (read) ---
-[[rules]]
-name = "claude-sentinel-read"
-command_regex = '''^\s*claude-sentinel\s+(log|test|--test|rules|version)(\s|$)'''
-
-# --- Terraform read ---
-[[rules]]
-name = "terraform-read"
-command_regex = '''^\s*terraform\s+(validate|plan|fmt|init|output|show|state\s+(list|show)|workspace\s+(list|show|select)|providers|version|graph)(\s|$)'''
-
-# --- docker-compose (hyphenated) ---
-[[rules]]
-name = "docker-compose"
-command_regex = '''^\s*docker-compose\s+(ps|logs|config|images|events|top|version|up|down|build|pull|start|stop|restart|exec|run)(\s|$)'''
-
-# --- macOS utilities ---
-[[rules]]
 name = "open"
 command_regex = '''^\s*open\s+'''
-
-[[rules]]
-name = "file-cmd"
-command_regex = '''^\s*file\s+'''
 
 [[rules]]
 name = "pbcopy-paste"
 command_regex = '''^\s*(pbcopy|pbpaste)\s*'''
 
-[[rules]]
-name = "uuidgen"
-command_regex = '''^\s*uuidgen\s*'''
-
-[[rules]]
-name = "sleep"
-command_regex = '''^\s*sleep\s+'''
-
-# --- Mermaid CLI ---
-[[rules]]
-name = "mmdc"
-command_regex = '''^\s*mmdc\s+'''
-
-# Added by `claude-sentinel apply` on 2026-04-18
-[[rules]]
-name = "flashspace-read"
-command_regex = '''^flashspace (get|list)-'''
-
-# Added by `claude-sentinel apply` on 2026-04-30
 [[rules]]
 name = "ps-pgrep"
 command_regex = '''^\s*(ps|pgrep)(\s|$)'''
@@ -388,10 +390,48 @@ command_regex = '''^\s*(stat|mdfind)(\s|$)'''
 name = "zipinfo"
 command_regex = '''^\s*zipinfo(\s|$)'''
 
-[[rules]]
-name = "pip-read"
-command_regex = '''^\s*pip3?\s+(show|list|freeze|check|search|config\s+(list|get))(\s|$)'''
+# --- Homebrew ---
 
 [[rules]]
-name = "make-dotted"
-command_regex = '''^\s*make\s+\w+\.(build|dev|test|lint|fmt|format|check|typecheck|run|start|stop|status|clean|docs|generate|codegen|install)(\s|$)'''
+name = "brew-read"
+command_regex = '''^\s*brew\s+(list|info|search|leaves|deps|uses|outdated|doctor|config|--version|home|cat|desc|log|tap-info|analytics)(\s|$)'''
+
+# --- Claude Ecosystem ---
+
+[[rules]]
+name = "claude-cli-read"
+command_regex = '''^\s*claude\s+(plugin\s+(list|marketplace)|plugins?\s+list|--version|version|sessions?\s+(list|show)|config\s+(list|get))(\s|$)'''
+
+[[rules]]
+name = "claude-sentinel-read"
+command_regex = '''^\s*claude-sentinel\s+(log|test|--test|rules|version)(\s|$)'''
+
+# --- Other CLIs ---
+
+[[rules]]
+name = "xai-read"
+command_regex = '''^\s*xai\s+(search|user|thread|trending|web|models)(\s|$)'''
+
+[[rules]]
+name = "xai-config-read"
+command_regex = '''^\s*xai\s+config\s+(get|list)(\s|$)'''
+
+[[rules]]
+name = "sheldon"
+command_regex = '''^\s*sheldon\s+(source|list|version|completions|init)(\s|$)'''
+
+[[rules]]
+name = "duti-read"
+command_regex = '''^\s*duti\s+(-x|-d|-l|--version)(\s|$)'''
+
+[[rules]]
+name = "fam-read"
+command_regex = '''^\s*fam\s+(show|export)(\s|$)'''
+
+[[rules]]
+name = "fam-subcommand-read"
+command_regex = '''^\s*fam\s+\S+\s+(show|status|list|test)(\s|$)'''
+
+[[rules]]
+name = "flashspace-read"
+command_regex = '''^flashspace (get|list)-'''
