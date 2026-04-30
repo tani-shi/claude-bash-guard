@@ -16,7 +16,6 @@ from claude_sentinel import (
     installer,
     logger,
     rule_engine,
-    suggester,
 )
 
 
@@ -100,30 +99,6 @@ def main(argv: list[str] | None = None) -> None:
         "--path", action="store_true", help="Print log directory path and exit"
     )
 
-    # suggest subcommand
-    suggest_parser = subparsers.add_parser(
-        "suggest",
-        help="Run an LLM agent that inspects the log and proposes TOML rule candidates",
-    )
-    suggest_parser.add_argument(
-        "--since",
-        default="30d",
-        help="Relative time window the agent passes to `claude-sentinel log` (default: 30d)",
-    )
-    suggest_parser.add_argument(
-        "-n",
-        "--limit",
-        type=int,
-        default=200,
-        dest="limit",
-        help="Max log records exposed to the agent per fetch (default: 200)",
-    )
-    suggest_parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Suppress agent progress output on stderr",
-    )
-
     # apply subcommand
     apply_parser = subparsers.add_parser(
         "apply",
@@ -160,10 +135,6 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.subcommand == "log":
         _run_log(args)
-        return
-
-    if args.subcommand == "suggest":
-        _run_suggest(args)
         return
 
     if args.subcommand == "apply":
@@ -447,15 +418,6 @@ def _run_apply(args: argparse.Namespace) -> None:
             file=sys.stderr,
             flush=True,
         )
-
-
-def _run_suggest(args: argparse.Namespace) -> None:
-    output = suggester.suggest(
-        since=args.since,
-        limit=args.limit,
-        verbose=not args.quiet,
-    )
-    print(output)
 
 
 if __name__ == "__main__":

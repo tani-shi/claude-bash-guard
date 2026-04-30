@@ -234,28 +234,31 @@ claude-sentinel install    # Add hooks to ~/.claude/settings.json
 claude-sentinel uninstall  # Remove hooks from ~/.claude/settings.json
 ```
 
-### Suggest rules (agent-driven)
-
-`claude-sentinel suggest` runs Sonnet 4.6 as an agent: the model is given a Bash tool and instructed to invoke `claude-sentinel log --json --stage LLM_JUDGE` and `claude-sentinel rules --json` itself, group log records by *intent* (not by surface form), check coverage against existing rules, and emit TOML rule candidates. Replaces the old fixed-logic aggregation, which couldn't tell that `cd src && make test`, `make test 2>&1 | tail -5`, and `make test` are the same thing.
-
-```bash
-claude-sentinel suggest                        # default: 30d window, up to 200 records
-claude-sentinel suggest --since 7d -n 100      # narrower window, fewer records
-claude-sentinel suggest --quiet                # suppress agent progress on stderr
-```
-
-Progress is streamed to stderr so you can see which Bash commands the agent ran. The TOML output on stdout follows the same `# --- allow.toml additions ---` / `# --- ask.toml additions ---` / `## Notes` format as before, so `claude-sentinel apply` consumes it unchanged. DENY candidates are surfaced only in `## Notes` for human review — the agent never proposes a `deny.toml` section.
-
-The agent runs with `permission_mode="bypassPermissions"` so the hook does not recursively evaluate its own Bash invocations. The prompt restricts the agent to `claude-sentinel log` / `claude-sentinel rules` only — any other shell command is treated as a violation. Cost and latency are higher than the old single-shot prompt because the agent loops up to 15 turns; this is acceptable for manual `make suggest-rules` / `make update-rules` runs.
-
 ### Apply suggestions
 
-Append validated rules from `suggest` output to `allow.toml` / `ask.toml`. Reads stdin (or `--input FILE`), validates each entry (regex compiles, name is not a duplicate), and appends a timestamped block. `deny.toml` is never written to automatically — proposed DENY entries are reported and skipped.
+Append validated rules to `allow.toml` / `ask.toml`. Reads stdin (or `--input FILE`), validates each entry (regex compiles, name is not a duplicate), and appends a timestamped block. `deny.toml` is never written to automatically — proposed DENY entries are reported and skipped.
 
 ```bash
-claude-sentinel suggest | claude-sentinel apply             # pipeline
-claude-sentinel apply --input suggestions.txt               # file input
-claude-sentinel apply --dry-run < suggestions.txt           # validate only
+cat suggestions.txt | claude-sentinel apply       # pipe input
+claude-sentinel apply --input suggestions.txt     # file input
+claude-sentinel apply --dry-run < suggestions.txt # validate only
+```
+
+The expected input has both section markers (even if empty) and an optional notes block:
+
+```
+# --- allow.toml additions ---
+[[rules]]
+name = "example-allow"
+command_regex = '''^example( |$)'''
+
+# --- ask.toml additions ---
+[[rules]]
+name = "example-ask"
+command_regex = '''^other-example( |$)'''
+
+## Notes
+- example-allow: safe read-only operation
 ```
 
 After applying, review the diff before committing:
@@ -284,7 +287,6 @@ src/claude_sentinel/
 ├── rule_engine.py        # TOML rule loading and regex matching
 ├── command_normalizer.py # Strip prefix options before matching/grouping
 ├── llm_judge.py          # LLM_JUDGE: claude subprocess
-├── suggester.py          # Agent-driven rule candidate generation
 ├── applier.py            # Append validated rules to allow/ask.toml
 ├── logger.py             # Evaluation log writer/reader
 ├── installer.py          # Hook install/uninstall
@@ -292,8 +294,13 @@ src/claude_sentinel/
     ├── deny.toml           # RULE_DENY patterns
     ├── allow.toml          # RULE_ALLOW patterns
     ├── ask.toml            # RULE_ASK patterns
-    ├── llm_prompt.txt      # LLM_JUDGE prompt template
-    └── suggest_prompt.txt  # Rule-suggestion prompt template
+    └── llm_prompt.txt      # LLM_JUDGE prompt template
+```
+
+Rule maintenance is driven by an interactive Claude Code slash command:
+
+```
+.claude/commands/update-rules.md  # /update-rules — interactive rule proposer
 ```
 
 ## Development
@@ -314,9 +321,8 @@ make typecheck     # Run type checker (pyright)
 make test          # Run tests (pytest)
 make clean         # Remove build artifacts and caches
 
-# Rule maintenance
-make suggest-rules # Run the LLM agent for TOML rule candidates (stdout only)
-make update-rules  # Suggest + apply; prints git diff for review
+# Rule maintenance (interactive, opens Claude Code)
+make update-rules
 
 # Test a command locally
 uv run claude-sentinel --test "your-command-here"
@@ -324,18 +330,21 @@ uv run claude-sentinel --test "your-command-here"
 
 ### Rule maintenance workflow
 
-When `LLM_JUDGE` fallthroughs pile up in the evaluation log, use the agent-driven suggester to refresh `allow.toml` / `ask.toml`:
+When `LLM_JUDGE` fallthroughs pile up in the evaluation log, refresh `allow.toml` / `ask.toml` interactively:
 
-1. `make update-rules` — runs Sonnet 4.6 as an agent that reads the log via `claude-sentinel log/rules`, proposes ALLOW/ASK entries, appends them to the TOML files, and prints `git diff --stat`.
-2. **Human review**: `git diff src/claude_sentinel/rules/` — inspect every new `[[rules]]` block. Revert any you disagree with (`git checkout -- <file>`).
-3. `make check` — ensure the new regexes don't regress existing tests.
-4. Optionally add targeted assertions in `tests/test_rules.py` for important new patterns.
-5. Commit the approved changes.
+1. `make update-rules` launches Claude Code in **plan mode** with the first prompt set to `/update-rules` — equivalent to running `claude --permission-mode plan -- "/update-rules"`. (You can also start `claude` yourself and type `/update-rules` manually.) The slash command is defined in `.claude/commands/update-rules.md` and drives Claude through the workflow: fetch the LLM_JUDGE log via `claude-sentinel log --json`, fetch existing rules via `claude-sentinel rules --json`, group records by *intent* (not surface form), and propose ALLOW / ASK candidates with rationale and decision tally.
+2. **Iterate.** Tell Claude things like "drop #3", "narrow #5 to `make test:*`", "split #7 into two rules", "this should be ASK not ALLOW". Claude refines until you say "apply".
+3. On approval Claude pipes the final TOML through `claude-sentinel apply`, which validates each entry and appends a timestamped block to `allow.toml` / `ask.toml`. `deny.toml` is never written automatically — DENY candidates are surfaced for manual review only.
+4. Claude shows `git diff --stat src/claude_sentinel/rules/`. Review with `git diff src/claude_sentinel/rules/` and revert anything you disagree with (`git checkout -- <file>`).
+5. `make check` — ensure the new regexes don't regress existing tests.
+6. Optionally add targeted assertions in `tests/test_rules.py` for important new patterns.
+7. Commit the approved changes.
 
-Separate steps are available if you want more control:
+Lower-level pieces if you want them:
 
-- `make suggest-rules` — agent output on stdout, no writes.
-- `claude-sentinel apply --dry-run` — validate a saved suggestion file without touching TOML.
+- `claude-sentinel log --stage LLM_JUDGE --since 30d -n 200 --json` — raw fallthrough records.
+- `claude-sentinel rules --json` — current rule snapshot.
+- `claude-sentinel apply --dry-run < suggestions.txt` — validate a saved suggestion file without touching TOML.
 
 DENY rule additions are never applied automatically. If the LLM proposes a DENY entry it is surfaced in the `[apply]` output and must be added by hand.
 
