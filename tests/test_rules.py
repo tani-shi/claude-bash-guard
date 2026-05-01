@@ -400,6 +400,26 @@ class TestAllowRules:
     def test_make_directory_subdir(self):
         assert match_allow("make -C subdir test") is not None
 
+    def test_gh_pr_checks(self):
+        assert match_allow("gh pr checks 141") is not None
+        assert match_allow("gh pr checks 129 --watch") is not None
+
+    def test_lsof(self):
+        assert match_allow("lsof -ti:5173") is not None
+        assert match_allow("lsof -iTCP -sTCP:LISTEN -P") is not None
+
+    def test_crontab_read(self):
+        assert match_allow("crontab -l") is not None
+
+    def test_atq(self):
+        assert match_allow("atq") is not None
+
+    def test_log_show(self):
+        assert match_allow("log show --predicate 'process == \"launchd\"'") is not None
+
+    def test_fswatch(self):
+        assert match_allow("fswatch -r .") is not None
+
 
 class TestSensitivePathRules:
     # A. Environment / config files

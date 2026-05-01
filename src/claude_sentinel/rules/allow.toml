@@ -277,6 +277,10 @@ command_regex = '''^\s*gh\s+(status|api|search)(\s|$)'''
 name = "gh-subcommand-read"
 command_regex = '''^\s*gh\s+\S+\s+(list|view|get|status|diff|check|watch|search|verify|logs|ports|token|trusted-root|gitignore|license|field-list|item-list)(\s|$)'''
 
+[[rules]]
+name = "gh-pr-checks"
+command_regex = '''^\s*gh\s+pr\s+checks(\s|$)'''
+
 # --- Google Workspace CLI (gog) ---
 
 [[rules]]
@@ -400,6 +404,26 @@ command_regex = '''^\s*(stat|mdfind)(\s|$)'''
 [[rules]]
 name = "zipinfo"
 command_regex = '''^\s*zipinfo(\s|$)'''
+
+[[rules]]
+name = "lsof"
+command_regex = '''^\s*lsof(\s|$)'''
+
+[[rules]]
+name = "crontab-read"
+command_regex = '''^\s*crontab\s+-l(\s|$)'''
+
+[[rules]]
+name = "atq"
+command_regex = '''^\s*atq(\s|$)'''
+
+[[rules]]
+name = "log-show"
+command_regex = '''^\s*log\s+show(\s|$)'''
+
+[[rules]]
+name = "fswatch"
+command_regex = '''^\s*fswatch(\s|$)'''
 
 # --- Homebrew ---
 

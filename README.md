@@ -139,8 +139,8 @@ Common development commands are auto-approved, including:
 - Database: `sqlite3`
 - Network: `curl`/`wget` (excludes pipe-to-shell, POST/PUT/DELETE/PATCH methods, and `--data` flags)
 - Cloud: `aws` read operations (`list`, `describe`, `get`, `show`, `wait`), `gcloud` read operations (including `logging read` and `logging tail`)
-- macOS: `launchctl` read operations (`list`, `print`, `blame`), `plutil` read (`-p`, `-lint`), `sample` (process profiling), `defaults read`, `mdfind` (Spotlight)
-- Process inspection: `ps`, `pgrep`
+- macOS: `launchctl` read operations (`list`, `print`, `blame`), `plutil` read (`-p`, `-lint`), `sample` (process profiling), `defaults read`, `mdfind` (Spotlight), `log show` (unified log), `fswatch` (filesystem events), `crontab -l`, `atq`
+- Process inspection: `ps`, `pgrep`, `lsof`
 - Utilities: `echo`, `pwd`, `which`, `date`, `sort`, `sed` (excludes `sed -i`), `awk`, `tar`, `zip`, `zipinfo`, `stat`, `env`, `printenv`
 - Variable assignments: `VAR='value'`, `VAR="value"`, `VAR=word` (static values only; `VAR=$(...)` is split and its inner command is evaluated independently)
 
