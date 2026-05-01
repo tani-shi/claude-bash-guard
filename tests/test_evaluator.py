@@ -207,10 +207,23 @@ class TestCompoundCommandRegression:
         assert stage == "LLM_JUDGE"
         mock_llm.assert_called_once_with(cmd, "/tmp")
 
-    def test_malformed_bash_resolves_to_ask(self):
-        decision, _, stage = self._eval('echo "unbalanced')
-        assert decision == "ask"
-        assert stage == "RULE_ASK"
+    @patch("claude_sentinel.llm_judge.evaluate", return_value=("allow", "Safe"))
+    def test_malformed_bash_falls_through_to_llm(self, mock_llm):
+        # Unparseable bash defers to the LLM judge instead of asking the
+        # human — heredocs and other unsupported constructs are exactly
+        # what humans struggle to evaluate quickly.
+        cmd = 'echo "unbalanced'
+        decision, _, stage = self._eval(cmd)
+        assert stage == "LLM_JUDGE"
+        mock_llm.assert_called_once_with(cmd, "/tmp")
+
+    def test_unparseable_with_deny_pattern_short_circuits(self):
+        # Defense in depth: heredoc body containing `rm -rf /` must be
+        # blocked even though the splitter cannot tokenize the command.
+        decision, reason, stage = self._eval("cat <<EOF\nrm -rf /\nEOF")
+        assert decision == "deny"
+        assert stage == "RULE_DENY"
+        assert "rm-rf-root" in reason
 
 
 class TestFileToolEvaluation:

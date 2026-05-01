@@ -47,7 +47,7 @@ deny  >  ask  >  llm  >  allow
 
 So `cd infra && terraform apply -auto-approve` is split into `cd infra` (allow) and `terraform apply -auto-approve` (ask), and the result is **ask** — the dangerous segment cannot be hidden behind a permissive prefix. If even one segment matches no rule, the command falls through to the LLM judge with the full original string for context.
 
-The splitter only models what it needs to find command boundaries; constructs it does not handle (heredocs `<<EOF`, ANSI-C quoting `$'…'`, `case` statements, unbalanced quotes/parens) resolve to **ask** by design — a parser limitation can never silently *allow* a dangerous command, only force an extra confirmation prompt.
+The splitter only models what it needs to find command boundaries; constructs it does not handle (heredocs `<<EOF`, ANSI-C quoting `$'…'`, `case` statements, unbalanced quotes/parens) are deferred to the LLM judge rather than punting to the human. Before falling through, the deny regex set is run against the full command string as a defense-in-depth pre-filter, so clear-cut dangerous patterns (e.g. `sudo`, `rm -rf /`, `curl … | sh`) are blocked even when the splitter cannot tokenize the command. A parser limitation can never silently *allow* a dangerous command — it can only widen the set of commands that flow through LLM evaluation, which itself falls back to **ask** on timeout or error.
 
 ### Prefix-option normalization
 
