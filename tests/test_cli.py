@@ -129,6 +129,62 @@ class TestHookMode:
         assert rec["decision"]["stage"] == "EVALUATION_ERROR"
         assert rec["decision"]["owner"] == "hook"
 
+    def test_codex_task_message_without_human_approval_fails_closed(
+        self, capsys, log_dir, tmp_path
+    ):
+        hook_input = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "codex_appsend_message_to_thread",
+            "tool_input": {"threadId": "target", "prompt": "Continue"},
+            "session_id": "test",
+            "cwd": str(tmp_path),
+            "permission_mode": "default",
+        }
+        with (
+            patch.dict(os.environ, {"CODEX_HOME": str(tmp_path / "missing")}),
+            patch("agent_sentinel.hook_io.read_input", return_value=hook_input),
+        ):
+            main(["--host", "codex"])
+
+        output = json.loads(capsys.readouterr().out)["hookSpecificOutput"]
+        assert output["permissionDecision"] == "deny"
+        assert "Codex task messaging is blocked" in output["permissionDecisionReason"]
+        rec = json.loads((log_dir / "eval.jsonl").read_text())
+        assert rec["decision"]["result"] == "deny"
+        assert rec["decision"]["stage"] == "CODEX_APPROVAL_DENY"
+
+    def test_codex_task_message_with_human_approval_defers_to_native(
+        self, capsys, log_dir, tmp_path
+    ):
+        codex_home = tmp_path / "codex-home"
+        codex_home.mkdir()
+        (codex_home / "config.toml").write_text(
+            'approval_policy = "on-request"\n'
+            'approvals_reviewer = "user"\n'
+            '[plugins."codex-app-tools@openai-bundled".mcp_servers.codex_app.tools.'
+            "send_message_to_thread]\n"
+            'approval_mode = "prompt"\n'
+        )
+        hook_input = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "codex_appsend_message_to_thread",
+            "tool_input": {"threadId": "target", "prompt": "Continue"},
+            "session_id": "test",
+            "cwd": str(tmp_path),
+            "permission_mode": "default",
+        }
+        with (
+            patch.dict(os.environ, {"CODEX_HOME": str(codex_home)}),
+            patch("agent_sentinel.hook_io.read_input", return_value=hook_input),
+        ):
+            main(["--host", "codex"])
+
+        assert capsys.readouterr().out == ""
+        rec = json.loads((log_dir / "eval.jsonl").read_text())
+        assert rec["decision"]["result"] == "defer"
+        assert rec["decision"]["stage"] == "CODEX_NATIVE_PROMPT"
+        assert rec["decision"]["owner"] == "native"
+
     def test_codex_rule_evaluation_error_keeps_audit_event(self, capsys, log_dir):
         hook_input = {
             "hook_event_name": "PreToolUse",
