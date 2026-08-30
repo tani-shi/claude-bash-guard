@@ -299,6 +299,30 @@ def test_warns_when_approval_policy_is_never(tmp_path):
     assert "on-request" in message
 
 
+def test_warns_when_task_message_human_approval_is_not_configured(tmp_path):
+    path = tmp_path / "hooks.json"
+
+    message = install(path)
+
+    assert "Codex task messaging is blocked" in message
+    assert "approval_policy" in message
+
+
+def test_accepts_task_message_human_approval_configuration(tmp_path):
+    path = tmp_path / "hooks.json"
+    (tmp_path / "config.toml").write_text(
+        'approval_policy = "on-request"\n'
+        'approvals_reviewer = "user"\n'
+        '[plugins."codex-app-tools@openai-bundled".mcp_servers.codex_app.tools.'
+        "send_message_to_thread]\n"
+        'approval_mode = "prompt"\n'
+    )
+
+    message = install(path)
+
+    assert "Codex task messaging is blocked" not in message
+
+
 @pytest.mark.skipif(shutil.which("codex") is None, reason="Codex CLI is not installed")
 def test_generated_rules_pass_execpolicy_validation(tmp_path):
     rules_path = tmp_path / "agent-sentinel.rules"

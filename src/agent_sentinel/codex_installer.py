@@ -8,6 +8,7 @@ import tomllib
 from copy import deepcopy
 from pathlib import Path
 
+from agent_sentinel import codex_approval
 from agent_sentinel.codex_policy import render_rules
 
 CODEX_HOME = Path.home() / ".codex"
@@ -166,6 +167,9 @@ def _configuration_notices(path: Path) -> list[str]:
             "is not guaranteed. Native approvals and auto-review are also unavailable. Use "
             "on-request for the supported configuration."
         )
+    approval_error = codex_approval.approval_config_error(path)
+    if approval_error:
+        notices.append(f"Warning: {approval_error}")
     return notices
 
 
