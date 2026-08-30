@@ -6,7 +6,8 @@ import subprocess
 
 import pytest
 
-from agent_sentinel.codex_installer import install, uninstall
+from agent_sentinel import codex_tasks
+from agent_sentinel.codex_installer import HOOK_ENTRIES, install, uninstall
 from agent_sentinel.codex_policy import (
     FORBIDDEN_RULES,
     HOOK_DENY_ASK_REASONS,
@@ -41,6 +42,8 @@ def test_install_preserves_existing_hooks(tmp_path):
     config = json.loads(path.read_text())
     assert config["description"] == "User hooks"
     assert len(config["hooks"]["PreToolUse"]) == 2
+    assert config["hooks"]["PostToolUse"] == [HOOK_ENTRIES["PostToolUse"]]
+    assert config["hooks"]["PermissionRequest"] == [HOOK_ENTRIES["PermissionRequest"]]
     assert path.with_suffix(".json.bak").exists()
     assert (tmp_path / "rules" / "agent-sentinel.rules").exists()
 
@@ -52,6 +55,16 @@ def test_install_is_idempotent(tmp_path):
     assert "already up to date" in message
     assert "Trust the agent-sentinel hook" not in message
     assert len(json.loads(path.read_text())["hooks"]["PreToolUse"]) == 1
+
+
+def test_install_uses_exact_task_tool_matchers(tmp_path):
+    path = tmp_path / "hooks.json"
+
+    install(path)
+
+    hooks = json.loads(path.read_text())["hooks"]
+    assert hooks["PostToolUse"][0]["matcher"] == codex_tasks.CREATE_TASK_TOOL
+    assert hooks["PermissionRequest"][0]["matcher"] == codex_tasks.SEND_MESSAGE_TOOL
 
 
 def test_install_migrates_legacy_command(tmp_path):
@@ -215,6 +228,15 @@ def test_uninstall_preserves_handler_in_same_group(tmp_path):
     entry = json.loads(path.read_text())["hooks"]["PreToolUse"][0]
     assert entry["matcher"] == "*"
     assert entry["hooks"] == [{"type": "command", "command": "other-hook"}]
+
+
+def test_uninstall_removes_all_managed_events(tmp_path):
+    path = tmp_path / "hooks.json"
+    install(path)
+
+    uninstall(path)
+
+    assert "hooks" not in json.loads(path.read_text())
 
 
 def test_generated_rules_never_allow_sandbox_bypass():

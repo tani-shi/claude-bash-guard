@@ -1,8 +1,8 @@
 # agent-sentinel
 
-agent-sentinel is a safety guard that inspects tool calls made by Claude Code and Codex. It assigns complementary responsibilities to PreToolUse hooks and permissions in Claude Code, and to the sandbox, execution rules, native approvals, and PreToolUse hooks in Codex.
+agent-sentinel is a safety guard that inspects tool calls made by Claude Code and Codex. It uses hooks and permissions in Claude Code, and the sandbox, execution rules, native approvals, and hooks in Codex.
 
-agent-sentinel does not expand Codex permissions. It generates only `prompt` and `forbidden` execution rules, never `decision = "allow"`, which would permit execution outside the sandbox without approval. It also leaves the user's `~/.codex/rules/default.rules` untouched.
+agent-sentinel never grants sandbox bypass. Its execution rules use only `prompt` and `forbidden`, and it leaves `~/.codex/rules/default.rules` untouched.
 
 ## Support matrix
 
@@ -11,15 +11,13 @@ agent-sentinel does not expand Codex permissions. It generates only `prompt` and
 | Bash | Static ALLOW / ASK / DENY rules and an LLM judge | Execution-rule `prompt` / `forbidden` decisions and deterministic hook DENY decisions |
 | File operations | Read / Write / Edit | apply_patch |
 | Sensitive paths | Hook and `permissions.deny` | Hook inspection of apply_patch |
-| ASK | Request approval from PreToolUse | Use execution rules for prefix matches and delegate the rest to the native policy |
+| ASK | Request approval from PreToolUse | Use execution rules and native approval |
 | Semantic LLM decisions | Claude Agent SDK | The configured Codex reviewer when an approval request occurs |
 | Installation target | `~/.claude/settings.json` | `~/.codex/hooks.json` and `~/.codex/rules/agent-sentinel.rules` |
 
-Codex PreToolUse hooks can reliably block only deny decisions. Prefix-expressible ASK rules are therefore handled by `prompt` in `.rules`, while the hook handles static DENY rules, sensitive paths, and deterministic DENY rules that parse wrappers or arguments. The hook emits no output for decisions other than deny and does not override the Codex sandbox or approval decisions.
+Codex PreToolUse blocks deterministic DENY decisions. Prefix-expressible ASK rules use `prompt` in `.rules`; other ASK rules use native policy and reach a reviewer only when Codex requests approval.
 
-In Codex, agent-sentinel generates `prompt` rules for prefix-expressible ASK rules so that they trigger approval requests. The configured Codex reviewer evaluates those requests. ASK rules without a generated prefix rule are delegated to Codex and reach a reviewer only if Codex itself produces an approval request. A reviewer does not inspect operations that the sandbox can execute without approval.
-
-Task-to-task messages are a separate fail-closed boundary. The observed PreToolUse name `codex_appsend_message_to_thread` is delegated to Codex only when the managed base configuration explicitly requests a human reviewer and a per-tool prompt. Missing, malformed, auto-review, and non-interactive configurations are denied by the hook. Read-only task tools such as read, list, and wait remain delegated without this check.
+Task messages require a human reviewer and per-tool prompt. PostToolUse records successful `codex_appcreate_thread` calls, and PermissionRequest auto-approves only recorded parent-to-direct-child messages. Records survive restarts; unknown targets use native approval, and invalid approval configuration is denied.
 
 agent-sentinel permanently blocks three kinds of ASK operations to protect against irrecoverable workspace changes:
 
@@ -73,7 +71,7 @@ agent-sentinel uninstall --target all
 
 ## Recommended Codex configuration
 
-The recommended layers are `workspace-write`, `on-request`, human review, agent-sentinel execution rules, and the PreToolUse hook:
+The recommended layers are `workspace-write`, `on-request`, human review, execution rules, and hooks:
 
 ```toml
 sandbox_mode = "workspace-write"
@@ -84,11 +82,11 @@ approvals_reviewer = "user"
 approval_mode = "prompt"
 ```
 
-agent-sentinel does not rewrite `config.toml`. The installer warns when the task-message contract is missing or when it detects settings that disable safety features. For task messages, the hook requires all three approval settings above in the base `$CODEX_HOME/config.toml`, checks project config layers for overrides, and rejects `dontAsk`, `bypassPermissions`, missing, and unknown hook permission modes. Project config cannot supply a contract missing from the managed base configuration.
+agent-sentinel does not rewrite `config.toml`. It requires these settings in the base config, checks project overrides, and rejects unsafe permission modes.
 
-Codex currently supports per-tool `approval_mode` for plugin MCP tools but not a per-tool reviewer. `approvals_reviewer = "user"` therefore sends every eligible approval request to the user, not only task messages. If `approvals_reviewer = "auto_review"` is selected, agent-sentinel blocks task messages while leaving unrelated tools to the native policy. This keeps reads and ordinary no-prompt operations automatic, but Codex cannot currently combine a human reviewer for task messages with auto-review for other approval requests.
+Codex has per-tool approval modes but no plugin-tool reviewer. `approvals_reviewer = "user"` therefore covers every eligible approval request; `auto_review` blocks task messages.
 
-PreToolUse does not expose the effective reviewer or active profile. The supported task-message contract therefore assumes that profiles and command-line `-c` overrides do not replace these settings. Managed environments should constrain reviewer and approval-policy overrides in Codex requirements as well as managing the base configuration.
+PreToolUse does not expose the effective reviewer or active profile, so profiles and command-line overrides must not replace these settings.
 
 This repository distributes read-only Codex CLI permissions for development in [`.codex/rules/codex-readonly.rules`](.codex/rules/codex-readonly.rules). When opened as a trusted project, it permits review, rule validation, diagnostics, and configuration listing without approval. It does not match configuration or authentication changes, or plugin and MCP additions or removals.
 
@@ -120,6 +118,7 @@ sandbox
   + agent-sentinel.rules (prompt / forbidden)
   + native approval → configured reviewer
   + PreToolUse (deny only)
+  + PermissionRequest (recorded direct child only)
 ```
 
 Compound Bash commands are split into segments at pipes, `&&`, `;`, substitutions, and similar boundaries. Claude Code applies the strictest decision across all segments. The Codex hook also applies static DENY rules and hook-owned ASK rules to every segment.

@@ -8,7 +8,7 @@ import tomllib
 from copy import deepcopy
 from pathlib import Path
 
-from agent_sentinel import codex_approval
+from agent_sentinel import codex_approval, codex_tasks
 from agent_sentinel.codex_policy import render_rules
 
 CODEX_HOME = Path.home() / ".codex"
@@ -25,6 +25,29 @@ HOOK_ENTRY = {
             "statusMessage": "Checking tool policy",
         }
     ],
+}
+HOOK_ENTRIES = {
+    HOOK_EVENT: HOOK_ENTRY,
+    "PostToolUse": {
+        "matcher": codex_tasks.CREATE_TASK_TOOL,
+        "hooks": [
+            {
+                "type": "command",
+                "command": "agent-sentinel --host codex",
+                "statusMessage": "Recording task ownership",
+            }
+        ],
+    },
+    "PermissionRequest": {
+        "matcher": codex_tasks.SEND_MESSAGE_TOOL,
+        "hooks": [
+            {
+                "type": "command",
+                "command": "agent-sentinel --host codex",
+                "statusMessage": "Checking task ownership",
+            }
+        ],
+    },
 }
 
 
@@ -90,17 +113,22 @@ def _rules_path_for(hooks_path: Path) -> Path:
 
 def _install_hook(path: Path) -> bool:
     config = _load_json(path)
-    entries = config.setdefault("hooks", {}).setdefault(HOOK_EVENT, [])
-    normalized_entries = []
-    for entry in entries:
-        handlers = entry.get("hooks", [])
-        kept_handlers = [hook for hook in handlers if not _is_sentinel_hook(hook)]
-        if kept_handlers:
-            normalized_entries.append({**entry, "hooks": kept_handlers})
-    normalized_entries.append(deepcopy(HOOK_ENTRY))
-    if normalized_entries == entries:
+    hooks = config.setdefault("hooks", {})
+    changed = False
+    for event, managed_entry in HOOK_ENTRIES.items():
+        entries = hooks.get(event, [])
+        normalized_entries = []
+        for entry in entries:
+            handlers = entry.get("hooks", [])
+            kept_handlers = [hook for hook in handlers if not _is_sentinel_hook(hook)]
+            if kept_handlers:
+                normalized_entries.append({**entry, "hooks": kept_handlers})
+        normalized_entries.append(deepcopy(managed_entry))
+        if normalized_entries != entries:
+            hooks[event] = normalized_entries
+            changed = True
+    if not changed:
         return False
-    config["hooks"][HOOK_EVENT] = normalized_entries
     _backup(path)
     _save_json(path, config)
     return True
@@ -119,21 +147,22 @@ def _install_rules(path: Path) -> bool:
 def _uninstall_hook(path: Path) -> bool:
     config = _load_json(path)
     hooks = config.get("hooks", {})
-    entries = hooks.get(HOOK_EVENT, [])
-    filtered = []
     removed = False
-    for entry in entries:
-        handlers = entry.get("hooks", [])
-        kept_handlers = [hook for hook in handlers if not _is_sentinel_hook(hook)]
-        removed |= len(kept_handlers) != len(handlers)
-        if kept_handlers:
-            filtered.append({**entry, "hooks": kept_handlers})
+    for event in list(hooks):
+        entries = hooks.get(event, [])
+        filtered = []
+        for entry in entries:
+            handlers = entry.get("hooks", [])
+            kept_handlers = [hook for hook in handlers if not _is_sentinel_hook(hook)]
+            removed |= len(kept_handlers) != len(handlers)
+            if kept_handlers:
+                filtered.append({**entry, "hooks": kept_handlers})
+        if filtered:
+            hooks[event] = filtered
+        else:
+            hooks.pop(event, None)
     if not removed:
         return False
-    if filtered:
-        hooks[HOOK_EVENT] = filtered
-    else:
-        hooks.pop(HOOK_EVENT, None)
     if not hooks:
         config.pop("hooks", None)
     _backup(path)

@@ -26,6 +26,7 @@ def policy_details(host: str) -> dict[str, Any]:
             "command_normalizer.py",
             "deletion_scope.py",
             "codex_approval.py",
+            "codex_tasks.py",
             "codex_policy.py",
         )
     )
@@ -40,7 +41,7 @@ def policy_details(host: str) -> dict[str, Any]:
         "rules_hash": hashlib.sha256(rules_content).hexdigest(),
         "hook_definition_hash": _digest(expected_hooks),
     }
-    installed_hooks = _installed_hook_definition(hooks_path)
+    installed_hooks = _installed_hook_definition(hooks_path, expected_hooks)
     details["installed_hook_definition_hash"] = (
         _digest(installed_hooks) if installed_hooks is not None else ""
     )
@@ -59,17 +60,17 @@ def policy_details(host: str) -> dict[str, Any]:
     return details
 
 
-def _expected_hook_definition(host: str) -> tuple[list[dict[str, Any]], Path]:
+def _expected_hook_definition(host: str) -> tuple[Any, Path]:
     if host == "codex":
-        from agent_sentinel.codex_installer import HOOK_ENTRY, HOOKS_PATH
+        from agent_sentinel.codex_installer import HOOK_ENTRIES, HOOKS_PATH
 
-        return [HOOK_ENTRY], HOOKS_PATH
+        return {event: [entry] for event, entry in HOOK_ENTRIES.items()}, HOOKS_PATH
     from agent_sentinel.installer import HOOK_ENTRIES, SETTINGS_PATH
 
     return HOOK_ENTRIES, SETTINGS_PATH
 
 
-def _installed_hook_definition(path: Path) -> list[dict[str, Any]] | None:
+def _installed_hook_definition(path: Path, expected: Any) -> Any | None:
     try:
         config = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -79,10 +80,16 @@ def _installed_hook_definition(path: Path) -> list[dict[str, Any]] | None:
     hooks_config = config.get("hooks", {})
     if not isinstance(hooks_config, dict):
         return None
-    entries = hooks_config.get("PreToolUse", [])
-    if not isinstance(entries, list):
-        return None
+    events = expected if isinstance(expected, dict) else {"PreToolUse": None}
+    installed_by_event = {
+        event: _sentinel_entries(hooks_config.get(event, [])) for event in events
+    }
+    return installed_by_event if isinstance(expected, dict) else installed_by_event["PreToolUse"]
 
+
+def _sentinel_entries(entries: object) -> list[dict[str, Any]]:
+    if not isinstance(entries, list):
+        return []
     installed = []
     for entry in entries:
         if not isinstance(entry, dict):
