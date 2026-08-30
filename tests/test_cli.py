@@ -185,6 +185,57 @@ class TestHookMode:
         assert rec["decision"]["stage"] == "CODEX_NATIVE_PROMPT"
         assert rec["decision"]["owner"] == "native"
 
+    def test_codex_owned_task_permission_is_auto_approved(self, capsys, log_dir, tmp_path):
+        creation = {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "codex_appcreate_thread",
+            "tool_input": {"prompt": "Work"},
+            "tool_response": {"threadId": "child", "hostId": "local"},
+            "session_id": "parent",
+            "cwd": str(tmp_path),
+        }
+        request = {
+            "hook_event_name": "PermissionRequest",
+            "tool_name": "codex_appsend_message_to_thread",
+            "tool_input": {"threadId": "child", "hostId": "local", "prompt": "Continue"},
+            "session_id": "parent",
+            "cwd": str(tmp_path),
+        }
+        with (
+            patch.dict(os.environ, {"AGENT_SENTINEL_STATE_DIR": str(tmp_path / "state")}),
+            patch("agent_sentinel.hook_io.read_input", side_effect=[creation, request]),
+        ):
+            main(["--host", "codex"])
+            assert capsys.readouterr().out == ""
+            main(["--host", "codex"])
+
+        output = json.loads(capsys.readouterr().out)["hookSpecificOutput"]
+        assert output == {
+            "hookEventName": "PermissionRequest",
+            "decision": {"behavior": "allow"},
+        }
+        rec = json.loads((log_dir / "eval.jsonl").read_text())
+        assert rec["decision"]["stage"] == "CODEX_OWNED_TASK_ALLOW"
+
+    def test_codex_unowned_task_permission_keeps_native_prompt(self, capsys, log_dir, tmp_path):
+        request = {
+            "hook_event_name": "PermissionRequest",
+            "tool_name": "codex_appsend_message_to_thread",
+            "tool_input": {"threadId": "other", "prompt": "Continue"},
+            "session_id": "parent",
+            "cwd": str(tmp_path),
+        }
+        with (
+            patch.dict(os.environ, {"AGENT_SENTINEL_STATE_DIR": str(tmp_path / "state")}),
+            patch("agent_sentinel.hook_io.read_input", return_value=request),
+        ):
+            main(["--host", "codex"])
+
+        assert capsys.readouterr().out == ""
+        rec = json.loads((log_dir / "eval.jsonl").read_text())
+        assert rec["decision"]["result"] == "defer"
+        assert rec["decision"]["stage"] == "CODEX_NATIVE_PROMPT"
+
     def test_codex_rule_evaluation_error_keeps_audit_event(self, capsys, log_dir):
         hook_input = {
             "hook_event_name": "PreToolUse",

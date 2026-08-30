@@ -141,7 +141,15 @@ class TestLogEvaluation:
         hooks_path = tmp_path / "hooks.json"
         rules_path = tmp_path / "rules" / "agent-sentinel.rules"
         rules_path.parent.mkdir()
-        hooks_path.write_text(json.dumps({"hooks": {"PreToolUse": [codex_installer.HOOK_ENTRY]}}))
+        hooks_path.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        event: [entry] for event, entry in codex_installer.HOOK_ENTRIES.items()
+                    }
+                }
+            )
+        )
         rules_path.write_text(render_rules())
         monkeypatch.setattr(codex_installer, "HOOKS_PATH", hooks_path)
         monkeypatch.setattr(codex_installer, "RULES_PATH", rules_path)
